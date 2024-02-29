@@ -82,7 +82,8 @@ executable rinder
                       servant-server,
                       servant-client,
                       warp,
-                      http-client
+                      http-client-tls,
+                      servant-client-core
 
     -- Directories containing source files.
     hs-source-dirs:   app

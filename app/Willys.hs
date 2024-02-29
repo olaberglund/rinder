@@ -1,49 +1,30 @@
 module Willys where
 
-import Control.Concurrent.Async
 import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Network.HTTP.Req
+import Servant
+import Servant.Client (BaseUrl (BaseUrl), Scheme (Https))
 
-userAgent :: Option scheme
-userAgent = header "User-Agent" "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
+userAgent :: Text
+userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
 
-fetchAllProducts' :: IO [JsonResponse ProductResponse]
-fetchAllProducts' = mapConcurrently fetchProduct' productHrefs
-  where
-    fetchProduct' :: Text -> IO (JsonResponse ProductResponse)
-    fetchProduct' = runReq defaultHttpConfig . fetchProduct
+type WillysAPI = NamedRoutes WillysRootAPI
 
-    productHrefs :: [Text]
-    productHrefs =
-      [ "kott-chark-och-fagel",
-        "frukt-och-gront",
-        "mejeri-ost-och-agg",
-        "skafferi",
-        "brod-och-kakor",
-        "fryst",
-        "fisk-och-skaldjur",
-        "vegetariskt"
-      ]
+-- fetchPromotions :: Req (JsonResponse PromotionResponse)
+-- fetchPromotions =
+--   req
+--     GET
+--     (https "willys.se" /: "search" /: "campaigns" /: "offline")
+--     NoReqBody
+--     jsonResponse
+--     ("q" =: (2176 :: Int) <> "type" =: ("PERSONAL_GENERAL" :: Text) <> "size" =: (2000 :: Int))
 
-fetchProduct :: Text -> Req (JsonResponse ProductResponse)
-fetchProduct href =
-  req
-    GET
-    (https "willys.se" /: "c" /: href)
-    NoReqBody
-    jsonResponse
-    ("size" =: (2000 :: Int) <> userAgent)
-
-fetchPromotions :: Req (JsonResponse PromotionResponse)
-fetchPromotions =
-  req
-    GET
-    (https "willys.se" /: "search" /: "campaigns" /: "offline")
-    NoReqBody
-    jsonResponse
-    ("q" =: (2176 :: Int) <> "type" =: ("PERSONAL_GENERAL" :: Text) <> "size" =: (2000 :: Int))
+data WillysRootAPI as = WillysRootAPI
+  { getPromotions :: as :- QueryParam "q" Int :> QueryParam "type" Text :> QueryParam "size" Int :> Get '[JSON] [Promotion],
+    getProducts :: as :- Capture "category" Text :> QueryParam "size" Int :> Get '[JSON] [Product]
+  }
+  deriving (Generic)
 
 type ProductResponse = Response Product
 

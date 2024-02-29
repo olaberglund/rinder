@@ -3,63 +3,53 @@ module Main where
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
-import GHC.Generics (Generic)
-import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
-import Servant.Client (AsClientT, BaseUrl (BaseUrl), ClientM, Scheme (Https), client, mkClientEnv, runClientM, (//), (/:))
+import Servant.Client (AsClientT, BaseUrl (BaseUrl), ClientEnv (ClientEnv), ClientM, Scheme (Http, Https), client, defaultMakeClientRequest, makeClientRequest, mkClientEnv, parseBaseUrl, runClientM, (//), (/:))
+import qualified Servant.Client.Core as Core
 import Willys
 import Prelude hiding (putStr)
 
+promotionsUrl :: String
+promotionsUrl = "https://willys.se/search/campaigns/offline"
+
+productsUrl :: String
+productsUrl = "https://willys.se/c"
+
 main :: IO ()
 main = do
-  manager' <- newManager defaultManagerSettings
-  res <- runClientM fetchAllProducts (mkClientEnv manager' (BaseUrl Https "willys.se" 80 ""))
+  manager' <- newTlsManager
+  burl <- parseBaseUrl productsUrl
+  res <-
+    runClientM
+      fetchAllProducts
+      ((mkClientEnv manager' burl) {makeClientRequest = \b r -> defaultMakeClientRequest b (Core.addHeader "User-Agent" userAgent r)})
+  -- res <-
+  --   runClientM fetchPromotions (mkClientEnv manager' baseUrl)
   print res
-
-type WillysAPI = NamedRoutes WillysRootAPI
-
-data WillysRootAPI as = WillysRootAPI
-  { getPromotions :: as :- "search" :> "campaigns" :> "offline" :> Capture "q" Int :> Get '[JSON] [Promotion],
-    getProducts :: as :- "c" :> Capture "category" Text :> Get '[JSON] [Product]
-  }
-  deriving (Generic)
 
 apiClient :: WillysRootAPI (AsClientT ClientM)
 apiClient = client (Proxy @WillysAPI)
 
+fetchPromotions :: ClientM [Promotion]
+fetchPromotions = apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000
+
 fetchAllProducts :: ClientM [Product]
-fetchAllProducts = do
-  products <- liftIO $ mapConcurrently (\href -> return $ apiClient // getProducts /: href) productHrefs
-  concat <$> sequence products
+fetchAllProducts =
+  liftIO (mapConcurrently (return . fetchProduct) productHrefs)
+    >>= fmap concat . sequence
   where
+    fetchProduct :: Text -> ClientM [Product]
+    fetchProduct href = apiClient // getProducts /: href /: Just 10
+
     productHrefs :: [Text]
     productHrefs =
-      [ "kott-chark-och-fagel",
-        "frukt-och-gront",
-        "mejeri-ost-och-agg",
-        "skafferi",
-        "brod-och-kakor",
-        "fryst",
-        "fisk-och-skaldjur",
-        "vegetariskt"
+      [ "kott-chark-och-fagel"
+      -- "frukt-och-gront",
+      -- "mejeri-ost-och-agg",
+      -- "skafferi",
+      -- "brod-och-kakor",
+      -- "fryst",
+      -- "fisk-och-skaldjur",
+      -- "vegetariskt"
       ]
-
--- main :: IO ()
--- main = run 8081 app
-
--- type RinderAPI = NamedRoutes RootAPI -- "products" :> Get '[JSON] [Product]
-
--- newtype RootAPI as = RootAPI {getProducts :: as :- Get '[JSON] [Product]}
---   deriving (Generic)
-
--- server :: RootAPI AsServer
--- server = RootAPI (pure exampleProducts)
-
--- app :: Application
--- app = serve (Proxy @RinderAPI) server
-
--- exampleProducts :: [Product]
--- exampleProducts =
---   [ Product "Milk",
---     Product "Eggs"
---   ]
