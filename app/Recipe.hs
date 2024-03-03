@@ -1,10 +1,10 @@
 module Recipe where
 
 import Data.Set (Set, intersection, size)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Willys (Product (..), Promotion)
-import qualified Willys
+import Willys qualified
 
 data Recipe = Recipe
   { name :: !Text,
