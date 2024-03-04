@@ -8,7 +8,6 @@ import GHC.Generics (Generic)
 import Lucid
 import Servant
 import Servant.Client hiding (Response)
-import Servant.Client.Core qualified as Core
 
 type WillysAPI = NamedRoutes WillysRootAPI
 
@@ -30,25 +29,19 @@ fetchProducts =
     >>= fmap concat . sequence
   where
     fetchProduct :: Text -> ClientM [Product]
-    fetchProduct href = results <$> (apiClient // getProducts /: href /: Just 10)
+    fetchProduct href = results <$> (apiClient // getProducts /: href /: Just 2000)
 
     productHrefs :: [Text]
     productHrefs =
-      [ "kott-chark-och-fagel"
-      -- "frukt-och-gront",
-      -- "mejeri-ost-och-agg",
-      -- "skafferi",
-      -- "brod-och-kakor",
-      -- "fryst",
-      -- "fisk-och-skaldjur",
-      -- "vegetariskt"
+      [ "kott-chark-och-fagel",
+        "frukt-och-gront",
+        "mejeri-ost-och-agg",
+        "skafferi",
+        "brod-och-kakor",
+        "fryst",
+        "fisk-och-skaldjur",
+        "vegetariskt"
       ]
-
-addUserAgent :: ClientEnv -> ClientEnv
-addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . Core.addHeader "User-Agent" userAgent}
-  where
-    userAgent :: Text
-    userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
 
 type ProductResponse = Response Product
 
@@ -56,6 +49,7 @@ type PromotionResponse = Response Promotion
 
 newtype Response a = Response {results :: [a]}
   deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
 
 data Promotion = Promotion
   { price :: !(Maybe Text),
@@ -63,9 +57,11 @@ data Promotion = Promotion
     potentialPromotions :: ![PotentialPromotion]
   }
   deriving (Generic, Show, Ord, Eq)
+  deriving anyclass (ToJSON)
 
 newtype Product = Product {name :: Text}
   deriving (Generic, Show, Eq, Ord)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance ToHtml Product where
   toHtml (Product nm) = toHtml nm
@@ -76,15 +72,12 @@ data PotentialPromotion = PotentialPromotion
     qualifyingCount :: !(Maybe Int)
   }
   deriving (Generic, Show, Ord, Eq)
-
-instance (FromJSON a) => FromJSON (Response a)
+  deriving anyclass (ToJSON)
 
 instance FromJSON Promotion where
   parseJSON = withObject "Promotion" $ \v -> do
     productName :: Text <- v .: "name"
     Promotion <$> v .: "price" <*> pure (Product productName) <*> v .: "potentialPromotions"
-
-instance FromJSON Product
 
 instance FromJSON PotentialPromotion where
   parseJSON =
@@ -94,11 +87,3 @@ instance FromJSON PotentialPromotion where
             "promotionPrice" -> "price"
             s -> s
         }
-
-instance ToJSON PotentialPromotion
-
-instance ToJSON Product
-
-instance ToJSON Promotion
-
-instance (ToJSON a) => ToJSON (Response a)

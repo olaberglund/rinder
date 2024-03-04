@@ -1,25 +1,23 @@
 module Main where
 
-import Data.Aeson (Value, decode, eitherDecode, encode)
-import Data.ByteString.Lazy.Char8
-import Network.HTTP.Client.TLS (newTlsManager)
-import Servant.Client (parseBaseUrl)
-import Server (runClientDefault)
-import Willys (Product, ProductResponse, fetchProducts)
+import Control.Concurrent (forkIO)
+import Control.Exception (try)
+import Local qualified
+import Network.Wai.Handler.Warp (run)
+import Server (app, localEnv)
 import Prelude hiding (putStrLn, readFile, writeFile)
 
 promotionsUrl :: String
-promotionsUrl = "https://willys.se/search/campaigns/offline"
+promotionsUrl = "willys.se/search/campaigns/offline"
 
 productsUrl :: String
 productsUrl = "willys.se/c"
 
 main :: IO ()
 main = do
-  mgr <- newTlsManager
-  url <- parseBaseUrl productsUrl
-  -- res <- runClientDefault mgr url fetchProducts
-  jsonprods <- readFile "product-category.json"
+  try startServer >>= \case
+    Left (e :: IOError) -> print $ "Error starting server: " <> show e
+    Right _ -> print "Server"
 
-  -- let res :: Either String ProductResponse = eitherDecode jsonprods
-  print 23
+startServer :: IO ()
+startServer = forkIO (run 8082 Local.app) >> localEnv >>= run 8080 . app
