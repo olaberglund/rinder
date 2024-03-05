@@ -5,7 +5,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
 import Html
 import Local qualified
-import Network.HTTP.Client (Manager)
+import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
 import Servant.Client
@@ -36,7 +36,7 @@ productionEnv = do
 
 localEnv :: IO (Env Local)
 localEnv = do
-  mgr <- newTlsManager
+  mgr <- newManager defaultManagerSettings
   url <- parseBaseUrl "localhost:8082"
   return $ Env mgr url Local.fetchProducts
 
