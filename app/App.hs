@@ -7,7 +7,7 @@ import Network.HTTP.Client (Manager)
 import Servant
 import Servant.Client (BaseUrl, ClientM)
 import Servant.HTML.Lucid (HTML)
-import Willys (Product)
+import Willys (Product, Promotion)
 import Prelude hiding (putStr)
 
 data DevEnv = Local | Production
@@ -15,11 +15,12 @@ data DevEnv = Local | Production
 data Env (a :: DevEnv) = Env
   { manager :: !Manager,
     baseUrl :: !BaseUrl,
-    fetchProducts :: !(ClientM [Product])
+    fetchProducts :: !(ClientM [Product]),
+    fetchPromotions :: !(ClientM [Promotion])
   }
 
 newtype RootApi as = RootAPI
-  { getProducts :: as :- Get '[HTML] HomePage
+  { getPromotions :: as :- Get '[HTML] HomePage
   }
   deriving (Generic)
 

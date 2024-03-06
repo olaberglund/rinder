@@ -57,7 +57,14 @@ data Promotion = Promotion
     potentialPromotions :: ![PotentialPromotion]
   }
   deriving (Generic, Show, Ord, Eq)
-  deriving anyclass (ToJSON)
+
+instance ToJSON Promotion where
+  toJSON (Promotion price (Product nm) potentialPromotions) =
+    object
+      [ "price" .= price,
+        "name" .= nm,
+        "potentialPromotions" .= potentialPromotions
+      ]
 
 newtype Product = Product {name :: Text}
   deriving (Generic, Show, Eq, Ord)
@@ -72,7 +79,9 @@ data PotentialPromotion = PotentialPromotion
     qualifyingCount :: !(Maybe Int)
   }
   deriving (Generic, Show, Ord, Eq)
-  deriving anyclass (ToJSON)
+
+instance ToJSON PotentialPromotion where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = \case "promotionPrice" -> "price"; s -> s}
 
 instance FromJSON Promotion where
   parseJSON = withObject "Promotion" $ \v -> do
@@ -87,3 +96,10 @@ instance FromJSON PotentialPromotion where
             "promotionPrice" -> "price"
             s -> s
         }
+
+instance ToHtml Promotion where
+  toHtml (Promotion _price product _potentialPromotions) = do
+    div_ [classes_ ["flex, space-x-2"]] $ do
+      toHtml product
+
+  toHtmlRaw = toHtml
