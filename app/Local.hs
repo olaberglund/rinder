@@ -1,7 +1,7 @@
 module Local where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (eitherDecodeStrict)
+import Data.Aeson (FromJSON, eitherDecodeStrict)
 import Data.ByteString qualified as BS
 import GHC.Generics (Generic)
 import Servant
@@ -10,9 +10,12 @@ import Servant.Client.Core.HasClient (AsClientT)
 import Servant.Server.Generic (AsServer)
 import Willys (Product, ProductResponse, Promotion, PromotionResponse, Response (..))
 
+port :: Int
+port = 8082
+
 data LocalRootApi as = LocalRootAPI
-  { getProducts :: as :- Get '[JSON] ProductResponse,
-    getPromotions :: as :- Get '[JSON] PromotionResponse
+  { getProducts :: as :- "products" :> Get '[JSON] ProductResponse,
+    getPromotions :: as :- "promotions" :> Get '[JSON] PromotionResponse
   }
   deriving (Generic)
 
@@ -22,20 +25,19 @@ app = serve (Proxy :: Proxy (NamedRoutes LocalRootApi)) server
 server :: LocalRootApi AsServer
 server =
   LocalRootAPI
-    { getProducts = liftIO (print "WRONG!") >> getProductsHandler,
-      getPromotions = liftIO (print "CORRECT") >> getPromotionsHandler
+    { getProducts = getProductsHandler,
+      getPromotions = getPromotionsHandler
     }
 
 getProductsHandler :: Handler ProductResponse
-getProductsHandler = do
-  res <- liftIO $ BS.readFile "product-category.json"
-  case eitherDecodeStrict res of
-    Right (Response products) -> return $ Response products
-    Left err -> liftIO (print err) >> return (Response [])
+getProductsHandler = handler "product-category.json"
 
 getPromotionsHandler :: Handler PromotionResponse
-getPromotionsHandler = do
-  res <- liftIO $ BS.readFile "promotions.json"
+getPromotionsHandler = handler "promotions.json"
+
+handler :: (FromJSON a) => FilePath -> Handler (Response a)
+handler path = do
+  res <- liftIO $ BS.readFile path
   case eitherDecodeStrict res of
     Right (Response promotions) -> return $ Response promotions
     Left err -> liftIO (print err) >> return (Response [])
@@ -49,4 +51,4 @@ fetchProducts :: ClientM [Product]
 fetchProducts = results <$> (apiClient // getProducts)
 
 fetchPromotions :: ClientM [Promotion]
-fetchPromotions = liftIO (print "PROMOTIONS?") >> results <$> (apiClient // getPromotions)
+fetchPromotions = results <$> (apiClient // getPromotions)

@@ -12,8 +12,8 @@ import Servant.Client hiding (Response)
 type WillysAPI = NamedRoutes WillysRootAPI
 
 data WillysRootAPI as = WillysRootAPI
-  { getPromotions :: as :- QueryParam "q" Int :> QueryParam "type" Text :> QueryParam "size" Int :> Get '[JSON] PromotionResponse,
-    getProducts :: as :- Capture "category" Text :> QueryParam "size" Int :> Get '[JSON] ProductResponse
+  { getPromotions :: as :- "search" :> "campaigns" :> "offline" :> QueryParam "q" Int :> QueryParam "type" Text :> QueryParam "size" Int :> Get '[JSON] PromotionResponse,
+    getProducts :: as :- "c" :> Capture "category" Text :> QueryParam "size" Int :> Get '[JSON] ProductResponse
   }
   deriving (Generic)
 
@@ -98,8 +98,8 @@ instance FromJSON PotentialPromotion where
         }
 
 instance ToHtml Promotion where
-  toHtml (Promotion _price product _potentialPromotions) = do
+  toHtml (Promotion _price prod _potentialPromotions) = do
     div_ [classes_ ["flex, space-x-2"]] $ do
-      toHtml product
+      toHtml prod
 
   toHtmlRaw = toHtml

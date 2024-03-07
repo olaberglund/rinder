@@ -43,7 +43,7 @@ productionEnv = do
 localEnv :: IO (Env Local)
 localEnv = do
   mgr <- newManager defaultManagerSettings
-  url <- parseBaseUrl "localhost:8082"
+  url <- parseBaseUrl $ "localhost:" <> show Local.port
   return $ Env mgr url Local.fetchProducts Local.fetchPromotions
 
 addUserAgent :: ClientEnv -> ClientEnv
