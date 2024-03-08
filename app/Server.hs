@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Server where
 
@@ -11,6 +12,7 @@ import GHC.TypeLits (KnownSymbol, symbolVal)
 import Local qualified
 import Lucid
 import Lucid.Htmx (useHtmx)
+import Lucid.Hyperscript (useHyperscript, __)
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
@@ -96,11 +98,13 @@ baseTemplate content = do
   html_ $ do
     head_ $ do
       useHtmx
+      useHyperscript
       meta_ [charset_ "utf-8"]
       meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
       script_ [src_ "https://cdn.tailwindcss.com"] ("" :: Text)
       title_ "Olas page"
     body_ content
+  where
 
 newtype Navbar = Navbar Text
 
@@ -127,17 +131,26 @@ showHref = pack (symbolVal (Proxy @s))
 data RecipeForm = RecipeForm [Product]
   deriving (Generic)
 
--- recipe form with checkboxes to select ingredients
 instance ToHtml RecipeForm where
-  toHtml (RecipeForm ingredients) = form_
-    [ method_ "post",
-      css_ "p-4 flex flex-col"
-    ]
-    $ do
-      label_ [for_ "products"] "Välj produkter"
-      input_ [list_ "products", name_ "product", type_ "text"]
-      datalist_ [id_ "products"] $ do
-        mapM_ (option_ . toHtml) ingredients
-      input_ [type_ "submit", value_ "Skicka"]
+  toHtml (RecipeForm ingredients) = div_ $ do
+    form_
+      [ method_ "post",
+        css_ "p-4 flex flex-col"
+      ]
+      $ do
+        label_ [for_ "products"] "Välj produkter"
+        input_ [id_ "chosen-product", list_ "products", name_ "product", type_ "text"]
+        datalist_ [id_ "products"] $ do
+          mapM_ (option_ . toHtml) ingredients
+        button_ [type_ "button", addIngredientToList] "Lägg till"
+    ul_ [id_ "recipe-ingredients"] mempty
 
   toHtmlRaw = toHtml
+
+addIngredientToList :: Attribute
+addIngredientToList =
+  [__|
+    call document.createElement('li')
+    put the (value of the previous <input/>) into its textContent
+    put it into #recipe-ingredients
+  |]

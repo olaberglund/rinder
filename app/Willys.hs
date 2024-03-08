@@ -3,7 +3,6 @@ module Willys where
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
-import Data.ByteString.Lazy qualified as BS
 import Data.Function (on)
 import Data.Set (Set, union, unions)
 import Data.Text (Text)

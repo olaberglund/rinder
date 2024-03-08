@@ -93,7 +93,9 @@ executable rinder
                       lucid-htmx,
                       http-client,
                       http-client-tls,
-                      transformers
+                      transformers,
+                      lucid-hyperscript
+
 
 
     -- Directories containing source files.
