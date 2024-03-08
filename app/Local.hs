@@ -8,7 +8,7 @@ import Servant
 import Servant.Client (ClientM, client, (//))
 import Servant.Client.Core.HasClient (AsClientT)
 import Servant.Server.Generic (AsServer)
-import Willys (Product, ProductResponse, Promotion, PromotionResponse, Response (..))
+import Willys (Pagination (Pagination), Product, ProductResponse, Promotion, PromotionResponse, Response (..))
 
 port :: Int
 port = 8082
@@ -30,7 +30,7 @@ server =
     }
 
 getProductsHandler :: Handler ProductResponse
-getProductsHandler = handler "product-category.json"
+getProductsHandler = handler "products.json"
 
 getPromotionsHandler :: Handler PromotionResponse
 getPromotionsHandler = handler "promotions.json"
@@ -39,8 +39,8 @@ handler :: (FromJSON a) => FilePath -> Handler (Response a)
 handler path = do
   res <- liftIO $ BS.readFile path
   case eitherDecodeStrict res of
-    Right (Response promotions) -> return $ Response promotions
-    Left err -> liftIO (print err) >> return (Response [])
+    Right (Response promotions p) -> return $ Response promotions p
+    Left err -> liftIO (print err) >> return (Response [] (Pagination (-1)))
 
 --------
 

@@ -3,6 +3,7 @@ module Willys where
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
+import Data.ByteString.Lazy qualified as BS
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Lucid
@@ -13,7 +14,7 @@ type WillysAPI = NamedRoutes WillysRootAPI
 
 data WillysRootAPI as = WillysRootAPI
   { getPromotions :: as :- "search" :> "campaigns" :> "offline" :> QueryParam "q" Int :> QueryParam "type" Text :> QueryParam "size" Int :> Get '[JSON] PromotionResponse,
-    getProducts :: as :- "c" :> Capture "category" Text :> QueryParam "size" Int :> Get '[JSON] ProductResponse
+    getProducts :: as :- "c" :> Capture "category" Text :> QueryParam "size" Int :> QueryParam "page" Int :> Get '[JSON] ProductResponse
   }
   deriving (Generic)
 
@@ -24,30 +25,42 @@ fetchPromotions :: ClientM [Promotion]
 fetchPromotions = results <$> (apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000)
 
 fetchProducts :: ClientM [Product]
-fetchProducts =
-  liftIO (mapConcurrently (return . fetchProduct) productHrefs)
-    >>= fmap concat . sequence
+fetchProducts = do
+  prods <- liftIO (mapConcurrently (return . fetchProductsOfCategory) productHrefs)
+  allprods <- fmap concat $ sequence prods
+  _ <- liftIO $ BS.writeFile "test.json" (encode (Response allprods (Pagination (-1))))
+  return allprods
   where
-    fetchProduct :: Text -> ClientM [Product]
-    fetchProduct href = results <$> (apiClient // getProducts /: href /: Just 2000)
+    fetchProductsOfCategory :: Text -> ClientM [Product]
+    fetchProductsOfCategory href = do
+      (Response res (Pagination tot)) <- apiClient // getProducts /: href /: Just 100 /: Just 0
+      rest <- liftIO $ mapConcurrently (\page -> return $ apiClient // getProducts /: href /: Just 100 /: Just page) [1 .. tot - 1]
+      responses <- sequence rest
+      liftIO $ print responses
+      return $ res ++ concat (map results responses)
 
-    productHrefs :: [Text]
-    productHrefs =
-      [ "kott-chark-och-fagel",
-        "frukt-och-gront",
-        "mejeri-ost-och-agg",
-        "skafferi",
-        "brod-och-kakor",
-        "fryst",
-        "fisk-och-skaldjur",
-        "vegetariskt"
-      ]
+productHrefs :: [Text]
+productHrefs =
+  [ "kott-chark-och-fagel",
+    "frukt-och-gront",
+    "mejeri-ost-och-agg",
+    "skafferi",
+    "brod-och-kakor",
+    "fryst",
+    "fisk-och-skaldjur",
+    "vegetariskt",
+    "skafferi"
+  ]
 
 type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
 
-newtype Response a = Response {results :: [a]}
+data Response a = Response {results :: [a], pagination :: Pagination}
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+newtype Pagination = Pagination {numberOfPages :: Int}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 
