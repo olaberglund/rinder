@@ -4,6 +4,7 @@ module Server where
 
 import App
 import Control.Monad.IO.Class (liftIO)
+import Data.Set (toList)
 import Data.Text
 import GHC.Generics (Generic)
 import GHC.TypeLits (KnownSymbol, symbolVal)
@@ -39,13 +40,13 @@ server = RootAPI <$> homePageHandler <*> recipePageHandler
 recipePageHandler :: Env a -> Handler RecipePage
 recipePageHandler env =
   liftIO (runClientDefault env.manager env.baseUrl env.fetchProducts) >>= \case
-    Right products -> return $ RecipePage products
+    Right products -> return $ RecipePage (toList products)
     Left _err -> return (RecipePage [])
 
 homePageHandler :: Env a -> Handler HomePage
 homePageHandler env =
   liftIO (runClientDefault env.manager env.baseUrl env.fetchPromotions) >>= \case
-    Right promos -> return $ HomePage promos
+    Right promos -> return $ HomePage (toList promos)
     Left _err -> return (HomePage [])
 
 runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)

@@ -4,11 +4,14 @@ import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BS
+import Data.Function (on)
+import Data.Set (Set, union, unions)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Lucid
 import Servant
 import Servant.Client hiding (Response)
+import Prelude hiding (product)
 
 type WillysAPI = NamedRoutes WillysRootAPI
 
@@ -21,23 +24,25 @@ data WillysRootAPI as = WillysRootAPI
 apiClient :: WillysRootAPI (AsClientT ClientM)
 apiClient = client (Proxy @WillysAPI)
 
-fetchPromotions :: ClientM [Promotion]
+fetchPromotions :: ClientM (Set Promotion)
 fetchPromotions = results <$> (apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000)
 
-fetchProducts :: ClientM [Product]
+fetchProducts :: ClientM (Set Product)
 fetchProducts = do
   prods <- liftIO (mapConcurrently (return . fetchProductsOfCategory) productHrefs)
-  allprods <- fmap concat $ sequence prods
-  _ <- liftIO $ BS.writeFile "test.json" (encode (Response allprods (Pagination (-1))))
+  allprods <- unions <$> sequence prods
+  -- _ <- liftIO $ BS.writeFile "test.json" (encode (Response allprods (Pagination (-1)))) -- to update the local file
   return allprods
   where
-    fetchProductsOfCategory :: Text -> ClientM [Product]
+    fetchProductsOfCategory :: Text -> ClientM (Set Product)
     fetchProductsOfCategory href = do
-      (Response res (Pagination tot)) <- apiClient // getProducts /: href /: Just 100 /: Just 0
-      rest <- liftIO $ mapConcurrently (\page -> return $ apiClient // getProducts /: href /: Just 100 /: Just page) [1 .. tot - 1]
-      responses <- sequence rest
-      liftIO $ print responses
-      return $ res ++ concat (map results responses)
+      (Response res (Pagination tot)) <- fetchProductsOnPage href 0
+      remainingCalls <- liftIO $ mapConcurrently (return . fetchProductsOnPage href) [1 .. tot - 1]
+      remRes <- sequence remainingCalls
+      return $ res `union` (unions $ results <$> remRes)
+
+    fetchProductsOnPage :: Text -> Int -> ClientM (Response Product)
+    fetchProductsOnPage href page = apiClient // getProducts /: href /: Just 100 /: Just page
 
 productHrefs :: [Text]
 productHrefs =
@@ -56,7 +61,7 @@ type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
 
-data Response a = Response {results :: [a], pagination :: Pagination}
+data Response a = Response {results :: Set a, pagination :: Pagination}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -69,7 +74,10 @@ data Promotion = Promotion
     product :: !Product,
     potentialPromotions :: ![PotentialPromotion]
   }
-  deriving (Generic, Show, Ord, Eq)
+  deriving (Generic, Show, Ord)
+
+instance Eq Promotion where
+  (==) = (==) `on` product
 
 instance ToJSON Promotion where
   toJSON (Promotion price (Product nm) potentialPromotions) =

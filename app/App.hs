@@ -1,6 +1,7 @@
 module App where
 
 import Control.Monad.Trans.Reader (ReaderT (runReaderT))
+import Data.Set (Set)
 import Network.HTTP.Client (Manager)
 import Servant.Client (BaseUrl, ClientM)
 import Willys (Product, Promotion)
@@ -11,8 +12,8 @@ data DevEnv = Local | Production
 data Env (a :: DevEnv) = Env
   { manager :: !Manager,
     baseUrl :: !BaseUrl,
-    fetchProducts :: !(ClientM [Product]),
-    fetchPromotions :: !(ClientM [Promotion])
+    fetchProducts :: !(ClientM (Set Product)),
+    fetchPromotions :: !(ClientM (Set Promotion))
   }
 
 type AppM (a :: DevEnv) = ReaderT (Env a) IO

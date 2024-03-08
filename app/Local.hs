@@ -3,6 +3,8 @@ module Local where
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, eitherDecodeStrict)
 import Data.ByteString qualified as BS
+import Data.Set (Set)
+import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Servant
 import Servant.Client (ClientM, client, (//))
@@ -35,20 +37,20 @@ getProductsHandler = handler "products.json"
 getPromotionsHandler :: Handler PromotionResponse
 getPromotionsHandler = handler "promotions.json"
 
-handler :: (FromJSON a) => FilePath -> Handler (Response a)
+handler :: (Ord a, FromJSON a) => FilePath -> Handler (Response a)
 handler path = do
   res <- liftIO $ BS.readFile path
   case eitherDecodeStrict res of
     Right (Response promotions p) -> return $ Response promotions p
-    Left err -> liftIO (print err) >> return (Response [] (Pagination (-1)))
+    Left err -> liftIO (print err) >> return (Response Set.empty (Pagination (-1)))
 
 --------
 
 apiClient :: LocalRootApi (AsClientT ClientM)
 apiClient = client (Proxy @(NamedRoutes LocalRootApi))
 
-fetchProducts :: ClientM [Product]
+fetchProducts :: ClientM (Set Product)
 fetchProducts = results <$> (apiClient // getProducts)
 
-fetchPromotions :: ClientM [Promotion]
+fetchPromotions :: ClientM (Set Promotion)
 fetchPromotions = results <$> (apiClient // getPromotions)
