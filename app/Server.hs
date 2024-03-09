@@ -135,22 +135,42 @@ instance ToHtml RecipeForm where
   toHtml (RecipeForm ingredients) = div_ $ do
     form_
       [ method_ "post",
-        css_ "p-4 flex flex-col"
+        css_ "p-4 flex flex-col m-4 w-96 gap-2"
       ]
       $ do
         label_ [for_ "products"] "Välj produkter"
-        input_ [id_ "chosen-product", list_ "products", name_ "product", type_ "text"]
+        input_ [id_ "chosen-product", list_ "products", name_ "product", type_ "text", css_ " border-2 border-gray-300 rounded-md p-2"]
         datalist_ [id_ "products"] $ do
           mapM_ (option_ . toHtml) ingredients
-        button_ [type_ "button", addIngredientToList] "Lägg till"
+        div_ [css_ "flex gap-2"] $ do
+          myButton_ Secondary onResetList "Återställ"
+          myButton_ Primary onAddIngredient "Lägg till"
     ul_ [id_ "recipe-ingredients"] mempty
 
   toHtmlRaw = toHtml
 
-addIngredientToList :: Attribute
-addIngredientToList =
+myButton_ :: (Term [Attribute] (t1 -> t2)) => Variant -> Attribute -> t1 -> t2
+myButton_ var atr = button_ [atr, type_ "button", css_ $ "p-2 rounded-md w-1/2 " <> styleVariation var]
+  where
+    styleVariation :: Variant -> Text
+    styleVariation = \case
+      Primary -> "bg-blue-500 text-white"
+      Secondary -> "border-2 border-blue-500 text-blue-500"
+
+data Variant = Primary | Secondary
+
+onAddIngredient :: Attribute
+onAddIngredient =
   [__|
-    call document.createElement('li')
-    put the (value of the previous <input/>) into its textContent
-    put it into #recipe-ingredients
+    on click
+      make a <li.ingredient />
+      put (value of #chosen-product) into its textContent
+      put it at the start of #recipe-ingredients
+  |]
+
+onResetList :: Attribute
+onResetList =
+  [__|
+    on click
+      remove <li /> from #recipe-ingredients
   |]
