@@ -1,0 +1,73 @@
+@font-face {
+  font-family: svenskform;
+  src: url("svenskform-regular.otf") format("opentype");
+}
+
+body {
+  font-size: 20px;
+  background-color: #121212;
+  font-family: svenskform, sans-serif;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  max-width: 650px;
+  margin: 40px auto;
+}
+
+nav ul {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  gap: 20px;
+  list-style: none;
+}
+
+nav ul li {
+  flex: 1;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #fff;
+  display: block;
+  text-align: center;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+form ul {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #fff;
+}
+
+button {
+  width: 100px;
+  font-family: svenskform, sans-serif;
+}
+
+.form-group {
+  display: flex;
+  gap: 20px;
+}
+
+.form-group input {
+  flex: 1;
+}
+
+textarea {
+  font-family: svenskform, sans-serif;
+}
+
+input {
+  font-family: svenskform, sans-serif;
+}

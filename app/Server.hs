@@ -27,7 +27,8 @@ type RecipePageHref = "recept"
 
 data RootApi as = RootAPI
   { homePage :: as :- Get '[HTML] HomePage,
-    recipePage :: as :- RecipePageHref :> Get '[HTML] RecipePage
+    recipePage :: as :- RecipePageHref :> Get '[HTML] RecipePage,
+    static :: as :- "static" :> Raw
   }
   deriving (Generic)
 
@@ -37,7 +38,7 @@ app :: Env a -> Application
 app = serve (Proxy @Api) . server
 
 server :: Env a -> RootApi AsServer
-server = RootAPI <$> homePageHandler <*> recipePageHandler
+server env = RootAPI (homePageHandler env) (recipePageHandler env) (serveDirectoryWebApp "static")
 
 recipePageHandler :: Env a -> Handler RecipePage
 recipePageHandler env =
@@ -76,7 +77,7 @@ newtype HomePage = HomePage [Promotion]
 
 instance ToHtml HomePage where
   toHtml (HomePage promotions) = baseTemplate $ do
-    toHtml (Navbar "/")
+    toHtml Navbar
     h1_ "Välkommen till Olas sida"
     mapM_ toHtml promotions
 
@@ -86,9 +87,13 @@ newtype RecipePage = RecipePage [Product]
 
 instance ToHtml RecipePage where
   toHtml (RecipePage products) = baseTemplate $ do
-    toHtml (Navbar (showHref @RecipePageHref))
-    h1_ "Skapa ett recept"
+    toHtml Navbar
+    h1_ "Recept"
+    p_ "Här kan du lägga till och se dina recept som används för att matcha mot veckans erbjudanden på Willys."
+    h2_ "Lägg till recept"
     toHtml (RecipeForm products)
+    h2_ "Dina recept"
+    ul_ [id_ "recipe-list"] ""
 
   toHtmlRaw = toHtml
 
@@ -98,32 +103,29 @@ baseTemplate content = do
   html_ $ do
     head_ $ do
       useHtmx
-      useHyperscript
+      link_ [rel_ "stylesheet", href_ ("static/styles.css")]
       meta_ [charset_ "utf-8"]
       meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
-      script_ [src_ "https://cdn.tailwindcss.com"] ("" :: Text)
+      script_ [type_ "text/javascript", src_ "static/scripts.js"] ("" :: Text)
       title_ "Olas page"
     body_ content
   where
 
-newtype Navbar = Navbar Text
+data Navbar = Navbar
 
 instance ToHtml Navbar where
-  toHtml (Navbar currentHref) =
-    nav_ [css_ "p-4"] $
-      ul_ [css_ "flex justify-center space-x-5"] $ do
+  toHtml Navbar =
+    nav_ $
+      ul_ $ do
         mapM_
           ( \(href, title) ->
-              li_ (a_ [href_ href, css_ (if currentHref == href then "underline" else "")] $ toHtml title)
+              li_ (a_ [href_ href] $ toHtml title)
           )
           navbarHrefs
     where
       navbarHrefs :: [(Text, Text)]
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
-
-css_ :: Text -> Attribute
-css_ cs = classes_ (splitOn " " cs)
 
 showHref :: forall s. (KnownSymbol s) => Text
 showHref = pack (symbolVal (Proxy @s))
@@ -132,45 +134,20 @@ data RecipeForm = RecipeForm [Product]
   deriving (Generic)
 
 instance ToHtml RecipeForm where
-  toHtml (RecipeForm ingredients) = div_ $ do
-    form_
-      [ method_ "post",
-        css_ "p-4 flex flex-col m-4 w-96 gap-2"
-      ]
-      $ do
-        label_ [for_ "products"] "Välj produkter"
-        input_ [id_ "chosen-product", list_ "products", name_ "product", type_ "text", css_ " border-2 border-gray-300 rounded-md p-2"]
-        datalist_ [id_ "products"] $ do
-          mapM_ (option_ . toHtml) ingredients
-        div_ [css_ "flex gap-2"] $ do
-          myButton_ Secondary onResetList "Återställ"
-          myButton_ Primary onAddIngredient "Lägg till"
-    ul_ [id_ "recipe-ingredients"] mempty
+  toHtml (RecipeForm ingredients) = do
+    form_ $ do
+      input_ [type_ "hidden", id_ "ingredients", name_ "ingredients", value_ ""]
+      div_ [class_ "form-group", onsubmit_ "onSubmit"] $ do
+        -- button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
+        label_ [for_ "chosen-product"] "Ingrediens:"
+        input_ [placeholder_ "Ange en ingrediens...", id_ "chosen-product", list_ "products", name_ "product", type_ "text", autocomplete_ "off"]
+        button_ [id_ "add-button", type_ "button", onclick_ "onAddIngredient()"] "Lägg till"
+      datalist_ [id_ "products"] $
+        mapM_ (option_ . toHtml) ingredients
+      label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
+      textarea_ [id_ "recipe-ingredients", name_ "recipe-ingredients", rows_ "8", readonly_ "true"] ""
+      div_ [class_ "form-group"] $ do
+        button_ [type_ "button", onclick_ "onResetList()"] "Återställ"
+        button_ [type_ "submit", onclick_ "onSubmit"] "Spara"
 
   toHtmlRaw = toHtml
-
-myButton_ :: (Term [Attribute] (t1 -> t2)) => Variant -> Attribute -> t1 -> t2
-myButton_ var atr = button_ [atr, type_ "button", css_ $ "p-2 rounded-md w-1/2 " <> styleVariation var]
-  where
-    styleVariation :: Variant -> Text
-    styleVariation = \case
-      Primary -> "bg-blue-500 text-white"
-      Secondary -> "border-2 border-blue-500 text-blue-500"
-
-data Variant = Primary | Secondary
-
-onAddIngredient :: Attribute
-onAddIngredient =
-  [__|
-    on click
-      make a <li.ingredient />
-      put (value of #chosen-product) into its textContent
-      put it at the start of #recipe-ingredients
-  |]
-
-onResetList :: Attribute
-onResetList =
-  [__|
-    on click
-      remove <li /> from #recipe-ingredients
-  |]
