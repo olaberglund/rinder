@@ -1,12 +1,12 @@
 @font-face {
-  font-family: svenskform;
-  src: url("svenskform-regular.otf") format("opentype");
+  font-family: fonten;
+  src: url("fonten-regular.otf") format("opentype");
 }
 
 body {
   font-size: 20px;
   background-color: #121212;
-  font-family: svenskform, sans-serif;
+  font-family: fonten, sans-serif;
   color: #fff;
   display: flex;
   justify-content: center;
@@ -52,7 +52,7 @@ form ul {
 
 button {
   width: 100px;
-  font-family: svenskform, sans-serif;
+  font-family: fonten, sans-serif;
 }
 
 .form-group {
@@ -65,9 +65,14 @@ button {
 }
 
 textarea {
-  font-family: svenskform, sans-serif;
+  font-family: fonten, sans-serif;
 }
 
 input {
-  font-family: svenskform, sans-serif;
+  font-family: fonten, sans-serif;
+}
+
+#recipe-list {
+  display: flex;
+  flex-direction: column;
 }

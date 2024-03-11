@@ -94,9 +94,11 @@ executable rinder
                       http-client,
                       http-client-tls,
                       transformers,
-                      lucid-hyperscript
+                      http-api-data,
+                      http-types
 
 
+    ghc-options: -threaded 
 
     -- Directories containing source files.
     hs-source-dirs:   app

@@ -7,9 +7,6 @@ function onAddIngredient() {
   }
 
   if (list) {
-    // split on newline,
-    // see if ingredient is already in the list
-    // and if so, dont add it
     const ingredients = list.value.split(/\r?\n/);
     if (!ingredients.includes(input.value)) {
       const newList = input.value + "\n" + list.value;
@@ -20,6 +17,14 @@ function onAddIngredient() {
     }
   }
 }
+
+document
+  .getElementById("chosen-product")
+  ?.addEventListener("keyup", ({ key }) => {
+    if (key === "Enter") {
+      onAddIngredient();
+    }
+  });
 
 function onResetList() {
   document.getElementById("recipe-ingredients").value = "";
