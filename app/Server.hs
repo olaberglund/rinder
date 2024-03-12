@@ -1,24 +1,21 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE QuasiQuotes #-}
-
 module Server where
 
 import App
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (catMaybes)
-import Data.Set (fromList, toList)
+import Data.Set (Set, fromList, intersection, toList)
+import Data.Set qualified as Set
 import Data.Text hiding (drop, head, map, tail)
 import Data.Text qualified as Text hiding (drop, head, map, tail)
 import Data.Text.IO qualified as TIO
 import GHC.Generics (Generic)
-import GHC.TypeLits (KnownSymbol, symbolVal)
 import Local qualified
 import Lucid
 import Lucid.Htmx (useHtmx)
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Network.HTTP.Types (hLocation)
-import Recipe (Recipe (Recipe))
+import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName))
 import Servant
 import Servant.Client
 import Servant.Client.Core qualified as Core
@@ -27,13 +24,11 @@ import Servant.Server.Generic (AsServer)
 import Willys (Product (Product), Promotion)
 import Willys qualified
 
-type RecipePageHref = "recept"
-
 data RootApi as = RootAPI
   { homePage :: as :- Get '[HTML] HomePage,
-    recipePage :: as :- RecipePageHref :> Get '[HTML] RecipePage,
+    recipePage :: as :- "recept" :> Get '[HTML] RecipePage,
     static :: as :- "static" :> Raw,
-    addRecipe :: as :- "add-recipe" :> ReqBody '[FormUrlEncoded] Recipe :> PostNoContent
+    addRecipe :: as :- "add-recipe" :> ReqBody '[FormUrlEncoded] RecipeForm :> PostNoContent
   }
   deriving (Generic)
 
@@ -43,15 +38,24 @@ app :: Env a -> Application
 app = serve (Proxy @Api) . server
 
 server :: Env a -> RootApi AsServer
-server env = RootAPI (homePageHandler env) (recipePageHandler env) (serveDirectoryWebApp "static") newRecipeHandler
+server env = RootAPI (homePageHandler env) (recipePageHandler env) (serveDirectoryWebApp "static") (newRecipeHandler env)
 
-newRecipeHandler :: Recipe -> Handler NoContent
-newRecipeHandler recipe = do
-  _ <- liftIO $ TIO.appendFile "recipes.txt" $ formatRecipe recipe
-  throwError err303 {errHeaders = [(hLocation, "/recept")]}
+newRecipeHandler :: Env a -> RecipeForm -> Handler NoContent
+newRecipeHandler env recipeForm =
+  liftIO (runClientDefault env.manager env.baseUrl env.fetchProducts)
+    >>= \case
+      Left _err -> throwError err500
+      Right products -> do
+        liftIO $ TIO.appendFile "recipes.txt" $ formatRecipe (mkRecipe recipeForm products)
+        throwError err303 {errHeaders = [(hLocation, "/recept")]}
   where
     formatRecipe :: Recipe -> Text
     formatRecipe (Recipe name ingredients) = name <> "\n" <> (Text.unlines $ map Willys.name $ toList ingredients) <> "\n"
+
+    mkRecipe :: RecipeForm -> Set Product -> Recipe
+    mkRecipe rcpf products =
+      let maybeIngredients = Set.map Product (unvalidatedIngredients rcpf)
+       in Recipe (rcpf.unvalidatedName) (maybeIngredients `intersection` products)
 
 recipePageHandler :: Env a -> Handler RecipePage
 recipePageHandler env = do
@@ -116,7 +120,7 @@ instance ToHtml RecipePage where
     p_ "Här kan du lägga till och se dina recept som används för att matcha mot veckans erbjudanden på Willys."
     i_ "Tips: om en ingrediens kan bytas ut mot en annan, lägg till båda."
     h2_ "Lägg till recept"
-    toHtml (RecipeForm products)
+    toHtml (RecipeFormComponent products)
     h2_ "Dina recept"
     mapM_ toHtml recipes
 
@@ -153,14 +157,11 @@ instance ToHtml Navbar where
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
 
-showHref :: forall s. (KnownSymbol s) => Text
-showHref = pack (symbolVal (Proxy @s))
+data RecipeFormComponent = RecipeFormComponent [Product]
+  deriving (Generic, Show)
 
-data RecipeForm = RecipeForm [Product]
-  deriving (Generic)
-
-instance ToHtml RecipeForm where
-  toHtml (RecipeForm ingredients) = do
+instance ToHtml RecipeFormComponent where
+  toHtml (RecipeFormComponent ingredients) = do
     form_ [action_ "/add-recipe", method_ "POST"] $ do
       div_ [class_ "form-group"] $ do
         label_ [for_ "recipe-name"] "Namn:"
