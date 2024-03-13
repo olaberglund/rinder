@@ -1,2147 +1,1085 @@
 {
+  "pagination": { "numberOfPages": 1 },
   "results": [
     {
-      "lowestHistoricalPrice": null,
-      "price": "32.9",
-      "manufacturer": "Polarbröd",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311800009555_C1N1_s05",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05701920504306_C1R1_s01"
       },
-      "ranking": 240.09989543826,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z060", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 13:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "600g",
-          "price": 19.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "19,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "19,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Polarbröd"],
-          "discountPrice": null,
-          "splashTitleText": "Kampanj",
-          "realMixAndMatch": false,
-          "mainProductCode": "100207848_ST",
-          "comparePrice": "33:17 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Polarpärlan 16-pack",
-          "priority": null,
-          "description": "Vete • Fullkorn",
-          "code": "2500155841"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07311800009555_C1N1_s05",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07311800009555_C1N1_s05",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "32.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "600g",
-      "showGoodPriceIcon": false,
-      "name": "Polarpärlan 16-pack",
-      "labels": ["swedish_flag", "from_sweden", "laktosfree"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Kondisbitar",
+      "potentialPromotions": [{ "price": 28, "qualifyingCount": 2 }],
+      "price": null
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "104.0",
-      "manufacturer": "Irland",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02355022600003_C1L1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08692857872064_C1N1_s01"
       },
-      "ranking": 240.09979838738,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z060", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 24:10 kr/kg",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "Ca 1kg",
-          "price": null,
-          "productCodes": null,
-          "promotionType": "SubtotalOrderPromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "79,90/kg",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "79,90/kg",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": null,
-          "brands": ["Irland"],
-          "discountPrice": null,
-          "splashTitleText": "Kampanj",
-          "realMixAndMatch": false,
-          "mainProductCode": "101203622_KG",
-          "comparePrice": "79:90 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Nötfärs",
-          "priority": null,
-          "description": "20%",
-          "code": "2500161737"
-        }
-      ],
-      "productBasketType": { "code": "VIKT", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/02355022600003_C1L1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/02355022600003_C1L1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/kg",
-      "priceNoUnit": "104.0",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "Ca 1kg",
-      "showGoodPriceIcon": false,
-      "name": "Nötfärs",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Pumptvål",
+      "potentialPromotions": [{ "price": 25, "qualifyingCount": 2 }],
+      "price": null
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "35.9",
-      "manufacturer": "Findus",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h5c/h3a/13270874292254/Findus Enportionsrätter x4 SFMC_axfood_300",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310401009551_C1N1_s02"
       },
-      "ranking": 240.09969248914,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z060", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 44:60 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "340-400g",
-          "price": 99.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": "4 för",
-          "rewardLabel": "99,00",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "Välj & blanda! 4 för 99,00",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 4,
-          "brands": ["Findus"],
-          "discountPrice": null,
-          "splashTitleText": "Kampanj",
-          "realMixAndMatch": true,
-          "mainProductCode": "101470674_ST",
-          "comparePrice": "61:88-72:79 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Dagens enportionsrätter",
-          "priority": null,
-          "description": "Flera olika sorter • Djupfrysta",
-          "code": "2500155729"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h5e/h37/13270874357790/Findus Enportionsrätter x4 SFMC_axfood_100",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h1b/h3e/13270874161182/ENPORTIONSRÄTTER Findus 4 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "35.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "340-400g",
-      "showGoodPriceIcon": false,
-      "name": "Dagens enportionsrätter",
-      "labels": ["msc_fish", "frozen", "environmental_facet"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Alkoholfri cider, öl",
+      "potentialPromotions": [{ "price": 29, "qualifyingCount": 3 }],
+      "price": "10.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "89.9",
-      "manufacturer": "Lambi",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/06414301055531_C1R1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350021420442_C1N1_s03"
       },
-      "ranking": 240.09959085074,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z060", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 30:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "16p",
-          "price": 59.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "59,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "59,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Lambi"],
-          "discountPrice": null,
-          "splashTitleText": "Kampanj",
-          "realMixAndMatch": false,
-          "mainProductCode": "101309671_ST",
-          "comparePrice": "38:60 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Toalettpapper 16-pack",
-          "priority": null,
-          "description": "Classic",
-          "code": "2500155649"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/06414301055531_C1R1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/06414301055531_C1R1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "89.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "16p",
-      "showGoodPriceIcon": false,
-      "name": "Toalettpapper 16-pack",
-      "labels": ["swan", "allergy_approved", "environmental_facet"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Bar",
+      "potentialPromotions": [{ "price": 18, "qualifyingCount": 2 }],
+      "price": "10.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "119.0",
-      "manufacturer": "Trocadero • Cuba cola • Loka",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hf1/h0f/14676448477214/axfood_300_Läsk Trocadero CubaCola x20 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04005808918966_C1R0_s02"
       },
-      "ranking": 240.09949281682,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z060", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 40:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "33cl",
-          "price": 79.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "79,00/st  +pant",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "79,00/st  +pant",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Trocadero • Cuba cola • Loka"],
-          "discountPrice": null,
-          "splashTitleText": "Kampanj",
-          "realMixAndMatch": false,
-          "mainProductCode": "101286333_ST",
-          "comparePrice": "11:97 kr/l +pant",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Läsk, kolsyrat vatten",
-          "priority": null,
-          "description": "Olika sorter",
-          "code": "2500155743"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/he0/h0c/14676448542750/axfood_100_Läsk Trocadero CubaCola x20 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hb0/h13/14676448346142/Läsk Trocadero CubaCola x20 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "119.0",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "33cl",
-      "showGoodPriceIcon": false,
-      "name": "Läsk, kolsyrat vatten",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Dagkräm, nattkräm",
+      "potentialPromotions": [{ "price": 69.9, "qualifyingCount": 1 }],
+      "price": "105.0"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "379.0",
-      "manufacturer": "Naturkött",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02373712100008_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02355005700003_C1L1_s03"
       },
-      "ranking": 200.8997380597,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 120:00 kr/kg",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "Ca 1,6kg",
-          "price": null,
-          "productCodes": null,
-          "promotionType": "SubtotalOrderPromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "259/kg",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "259/kg",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": null,
-          "brands": ["Naturkött"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "100998477_KG",
-          "comparePrice": "259:00 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Färsk hel oxfilé",
-          "priority": null,
-          "description": "Brasilien • Begränsat parti",
-          "code": "2500161739"
-        }
-      ],
-      "productBasketType": { "code": "VIKT", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/02373712100008_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/02373712100008_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/kg",
-      "priceNoUnit": "379.0",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "Ca 1,6kg",
-      "showGoodPriceIcon": false,
-      "name": "Färsk hel oxfilé",
-      "labels": ["keyhole"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Fläskkarré med ben",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": null }],
+      "price": "109.0"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "49.9",
-      "manufacturer": "Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083455858_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083490651_C1L1_s01"
       },
-      "ranking": 200.8997247829,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 10:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "500g",
-          "price": 39.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "39,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "39,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101262973_ST",
-          "comparePrice": "79:80 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Kycklingfärs",
-          "priority": null,
-          "description": "Sverige",
-          "code": "2500161745"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07340083455858_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07340083455858_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "49.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "500g",
-      "showGoodPriceIcon": false,
-      "name": "Kycklingfärs",
-      "labels": ["swedish_flag", "swedish_bird", "keyhole"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Torskfilé",
+      "potentialPromotions": [{ "price": 99, "qualifyingCount": 1 }],
+      "price": "119.0"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "315.0",
-      "manufacturer": "Garant Eko",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02313710100006_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/h05/h11/14087861895198/tulpaner gula 7p SFMC_axfood_300"
       },
-      "ranking": 200.89971740434,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 116:00 kr/kg",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "Ca 1kg",
-          "price": null,
-          "productCodes": null,
-          "promotionType": "SubtotalOrderPromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "199/kg",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "199/kg",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": null,
-          "brands": ["Garant Eko"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101203941_KG",
-          "comparePrice": "199:00 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Ekologisk biff med kappa",
-          "priority": null,
-          "description": "Sverige • I bit",
-          "code": "2500162685"
-        }
-      ],
-      "productBasketType": { "code": "VIKT", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/02313710100006_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/02313710100006_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/kg",
-      "priceNoUnit": "315.0",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "Ca 1kg",
-      "showGoodPriceIcon": false,
-      "name": "Ekologisk biff med kappa",
-      "labels": [
-        "ecological",
-        "krav",
-        "swedish_flag",
-        "meat_from_sweden",
-        "eu_ecological"
-      ],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Tulpaner",
+      "potentialPromotions": [{ "price": 79.9, "qualifyingCount": 1 }],
+      "price": "119.0"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "31.9",
-      "manufacturer": "Dafgårds",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h4c/h6e/14008350212126/dafgårds enportionspajer x4 SFMC_axfood_300",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083489358_C1N1_s01"
       },
-      "ranking": 200.6999231445,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 2,
-          "savePrice": "Spara 28:60 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "240g",
-          "price": 99.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": "4 för",
-          "rewardLabel": "99,00",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 2 köp",
-          "cartLabel": "Välj & blanda! 4 för 99,00",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 4,
-          "brands": ["Dafgårds"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": true,
-          "mainProductCode": "101255750_ST",
-          "comparePrice": "103:13 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 2,
-          "endDate": "03/03-2024",
-          "name": "Enportionspajer",
-          "priority": null,
-          "description": "Flera olika sorter • Djupfrysta",
-          "code": "2500155730"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h9e/h6d/14008350277662/dafgårds enportionspajer x4 SFMC_axfood_100",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h63/h8f/14008349884446/Enportionspajer Dafgårds 4 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "31.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "240g",
-      "showGoodPriceIcon": false,
-      "name": "Enportionspajer",
-      "labels": ["frozen"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Handtvål",
+      "potentialPromotions": [{ "price": 18, "qualifyingCount": 2 }],
+      "price": "12.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "49.9",
-      "manufacturer": "Daloon",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05741200319770_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02355034700005_C1N1_s02"
       },
-      "ranking": 200.69991412754,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 10:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "800g",
-          "price": 39.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "39,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "39,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Daloon"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101473295_ST",
-          "comparePrice": "49:88 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Vårrullar 8-pack",
-          "priority": null,
-          "description": "Classic • Djupfrysta",
-          "code": "2500155734"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/05741200319770_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/05741200319770_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "49.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "800g",
-      "showGoodPriceIcon": false,
-      "name": "Vårrullar 8-pack",
-      "labels": ["frozen"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Grytbitar av nöt",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": null }],
+      "price": "129.0"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "49.9",
-      "manufacturer": "Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083490941_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083467059_C1N1_s01"
       },
-      "ranking": 200.59979511058,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 10:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "450g",
-          "price": 39.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "39,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "39,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101345637_ST",
-          "comparePrice": "88:67 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Delikatessköttbullar",
-          "priority": null,
-          "description": null,
-          "code": "2500157004"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07340083490941_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07340083490941_C1N1_s03",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "49.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "450g",
-      "showGoodPriceIcon": false,
-      "name": "Delikatessköttbullar",
-      "labels": ["swedish_flag", "meat_from_sweden"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Servetter 100-pack",
+      "potentialPromotions": [{ "price": 11.9, "qualifyingCount": 1 }],
+      "price": "13.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "99.9",
-      "manufacturer": "Garant Eko • Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02359772700006_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310511210304_S01"
       },
-      "ranking": 200.49981609362,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 20:00-35:10 kr/kg",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "Ca 650-730g",
-          "price": null,
-          "productCodes": null,
-          "promotionType": "SubtotalOrderPromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "79,90/kg",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "79,90/kg",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": null,
-          "brands": ["Garant Eko • Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101475662_KG",
-          "comparePrice": "79:90 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Präst®, Herrgård®, Grevé®",
-          "priority": null,
-          "description": "Olika sorter",
-          "code": "2500155861"
-        }
-      ],
-      "productBasketType": { "code": "VIKT", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/02359772700006_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/02359772700006_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/kg",
-      "priceNoUnit": "99.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "Ca 650-730g",
-      "showGoodPriceIcon": false,
-      "name": "Präst®, Herrgård®, Grevé®",
-      "labels": [
-        "ecological",
-        "krav",
-        "swedish_flag",
-        "from_sweden",
-        "eu_ecological",
-        "keyhole"
-      ],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Chokladkaka, chokladbit",
+      "potentialPromotions": [{ "price": 25, "qualifyingCount": 2 }],
+      "price": "14.5"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "24.9",
-      "manufacturer": "Président",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/03228024210138_C1L1_s02",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083480775_C1L1_s01"
       },
-      "ranking": 200.49980576594,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 4,
-          "savePrice": "Spara 5:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "200g",
-          "price": 19.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "19,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 4 köp",
-          "cartLabel": "19,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Président"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101366606_ST",
-          "comparePrice": "99:50 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 4,
-          "endDate": "03/03-2024",
-          "name": "Burger cheese",
-          "priority": null,
-          "description": "Cheddar",
-          "code": "2500155862"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/03228024210138_C1L1_s02",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/03228024210138_C1L1_s02",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "24.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "200g",
-      "showGoodPriceIcon": false,
-      "name": "Burger cheese",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Ekologisk kokosmjölk, kokosgrädde",
+      "potentialPromotions": [{ "price": 12.9, "qualifyingCount": 1 }],
+      "price": "14.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "59.9",
-      "manufacturer": "Falkenberg",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083490866_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310130181085_C1R1_s04"
       },
-      "ranking": 200.3997664213,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 15:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "300g",
-          "price": 44.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "44,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "44,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Falkenberg"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101345186_ST",
-          "comparePrice": "149:67 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Panerad sej",
-          "priority": null,
-          "description": null,
-          "code": "2500157615"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07340083490866_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07340083490866_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "59.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "300g",
-      "showGoodPriceIcon": false,
-      "name": "Panerad sej",
-      "labels": ["msc_fish", "environmental_facet"],
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Våffelmix",
+      "potentialPromotions": [{ "price": 11.9, "qualifyingCount": 1 }],
+      "price": "14.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "12.9",
-      "manufacturer": "Twin Dragon",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hc7/h9a/15293339467806/axfood_300_Glasnudlar Twin Dragon x2 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07038010070952_C1L1_s01"
       },
-      "ranking": 200.2999715061,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 5,
-          "savePrice": "Spara 9:80 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "100g",
-          "price": 16.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": "2 för",
-          "rewardLabel": "16,00",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 5 köp",
-          "cartLabel": "2 för 16,00",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 2,
-          "brands": ["Twin Dragon"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101194421_ST",
-          "comparePrice": "80:00 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 5,
-          "endDate": "03/03-2024",
-          "name": "Glasnudlar",
-          "priority": null,
-          "description": null,
-          "code": "2500155635"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hd8/h9d/15293339533342/axfood_100_Glasnudlar Twin Dragon x2 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h39/h8d/15293339074590/Glasnudlar Twin Dragon x2 SFMC.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "12.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "100g",
-      "showGoodPriceIcon": false,
-      "name": "Glasnudlar",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Yoghurt med müsli",
+      "potentialPromotions": [{ "price": 25, "qualifyingCount": 2 }],
+      "price": "14.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "29.9",
-      "manufacturer": "Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083479878_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311312005458_C1N1_s01"
       },
-      "ranking": 200.29995117842,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 10:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "540/300g",
-          "price": 19.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "19,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "19,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101310324_ST",
-          "comparePrice": "66:33 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Hamburgergurka",
-          "priority": null,
-          "description": "Långskivade",
-          "code": "2500155639"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07340083479878_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07340083479878_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "29.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "540/300g",
-      "showGoodPriceIcon": false,
-      "name": "Hamburgergurka",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Kokosmjölk",
+      "potentialPromotions": [{ "price": 28, "qualifyingCount": 2 }],
+      "price": "15.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "21.9",
-      "manufacturer": "Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hc6/h4d/11423586779166/brioche_hamburgerbröd_x2_550_axfood_300",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311043000548_C1N1_s01"
       },
-      "ranking": 200.19986445522,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 8:80-16:80 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "200g • 250g",
-          "price": 35.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": "2 för",
-          "rewardLabel": "35,00",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "Välj & blanda! 2 för 35,00",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 2,
-          "brands": ["Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": true,
-          "mainProductCode": "101237094_ST",
-          "comparePrice": "70:00-87:50 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Hamburgerbröd brioche",
-          "priority": null,
-          "description": "Olika sorter • Gäller ej soft bun hamburgerbröd",
-          "code": "2500155842"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hd7/h50/11423586844702/brioche_hamburgerbröd_x2_550_axfood_100",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/hdf/h42/11423586418718/brioche_hamburgerbröd_x2_550.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "21.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "200g • 250g",
-      "showGoodPriceIcon": false,
-      "name": "Hamburgerbröd brioche",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Linssnacks, skruvar, rustika chips",
+      "potentialPromotions": [{ "price": 35, "qualifyingCount": 3 }],
+      "price": "16.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "9.9",
-      "manufacturer": "Bonjour",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h96/h15/9697661550622/kanelbulle_vaniljbulle_x4_550_axfood_300",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07611612700955_C1N1_s01"
       },
-      "ranking": 200.19985183378,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 10:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "90g",
-          "price": 20.0,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": "4 för",
-          "rewardLabel": "20,00",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "Välj & blanda! 4 för 20,00",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 4,
-          "brands": ["Bonjour"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": true,
-          "mainProductCode": "101211677_ST",
-          "comparePrice": "55:56 kr/kg",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Kanelbulle, vaniljbulle",
-          "priority": null,
-          "description": null,
-          "code": "2500155844"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h94/h18/9697661616158/kanelbulle_vaniljbulle_x4_550_axfood_100",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://d2rfo6yapuixuu.cloudfront.net/h5d/h0b/9697661255710/kanelbulle_vaniljbulle_x4_550x550.jpg",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "9.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "90g",
-      "showGoodPriceIcon": false,
-      "name": "Kanelbulle, vaniljbulle",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Tortilla mini 8-pack",
+      "potentialPromotions": [{ "price": 14.9, "qualifyingCount": 1 }],
+      "price": "16.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "29.9",
-      "manufacturer": "Garant",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083489884_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083483127_C1N1_s01"
       },
-      "ranking": 200.09984379986,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 7:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "1L",
-          "price": 22.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "22,90/st  +pant",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "22,90/st  +pant",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Garant"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "101338213_ST",
-          "comparePrice": "22:90 kr/l +pant",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Juice NFC",
-          "priority": null,
-          "description": "Flera olika sorter",
-          "code": "2500155849"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07340083489884_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07340083489884_C1N1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "29.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "1L",
-      "showGoodPriceIcon": false,
-      "name": "Juice NFC",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
+      "name": "Trosskydd, bindor",
+      "potentialPromotions": [{ "price": 28, "qualifyingCount": 2 }],
+      "price": "16.9"
     },
     {
-      "lowestHistoricalPrice": null,
-      "price": "29.9",
-      "manufacturer": "Skånemejerier",
       "image": {
-        "imageType": "PRIMARY",
-        "format": "product",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310867523301_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083492358_C1N1_s01"
       },
-      "ranking": 200.09983674898,
-      "potentialPromotions": [
-        {
-          "threshold": null,
-          "campaignType": "LOYALTY",
-          "promotionTheme": { "code": "Z020", "visible": null },
-          "redeemLimit": 3,
-          "savePrice": "Spara 7:00 kr",
-          "sorting": null,
-          "textLabelGenerated": "",
-          "textLabelManual": null,
-          "weightVolume": "5dl",
-          "price": 22.9,
-          "productCodes": null,
-          "promotionType": "MixMatchPricePromotion",
-          "startDate": "26/02-2024",
-          "conditionLabel": null,
-          "rewardLabel": "22,90/st",
-          "textLabel": "",
-          "redeemLimitLabel": "Max 3 köp",
-          "cartLabel": "22,90/st ",
-          "validUntil": null,
-          "timesUsed": null,
-          "qualifyingCount": 1,
-          "brands": ["Skånemejerier"],
-          "discountPrice": null,
-          "splashTitleText": "",
-          "realMixAndMatch": false,
-          "mainProductCode": "100604598_ST",
-          "comparePrice": "45:80 kr/l",
-          "promotionPercentage": null,
-          "promotionRedeemLimit": 3,
-          "endDate": "03/03-2024",
-          "name": "Vispgrädde",
-          "priority": null,
-          "description": "36%",
-          "code": "2500155855"
-        }
-      ],
-      "productBasketType": { "code": "ST", "type": "ProductBasketTypeEnum" },
-      "solrSearchScore": 0.9596505761146545,
-      "energyDeclaration": null,
-      "thumbnail": {
-        "imageType": "PRIMARY",
-        "format": "thumbnail",
-        "url": "https://assets.axfood.se/image/upload/f_auto,t_100/07310867523301_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "originalImage": {
-        "imageType": "PRIMARY",
-        "format": "original",
-        "url": "https://assets.axfood.se/image/upload/f_auto/07310867523301_C1L1_s01",
-        "altText": null,
-        "galleryIndex": null,
-        "width": null
-      },
-      "online": false,
-      "priceUnit": "kr/st",
-      "priceNoUnit": "29.9",
-      "googleAnalyticsCategory": "",
-      "displayVolume": "5dl",
-      "showGoodPriceIcon": false,
-      "name": "Vispgrädde",
-      "labels": null,
-      "title": "2409 W+ LOJALITET WIL"
-    }
-  ],
-  "sorts": null,
-  "pagination": {
-    "pageSize": 20,
-    "currentPage": 0,
-    "sort": null,
-    "numberOfPages": 8,
-    "totalNumberOfResults": 157,
-    "allProductsInCategoriesCount": 0,
-    "allProductsInSearchCount": 0
-  },
-  "relatedResults": null,
-  "relatedResultsPagination": null,
-  "currentQuery": null,
-  "breadcrumbs": [],
-  "facets": [
-    {
-      "code": "categoryLevel1",
-      "name": "categoryLevel1",
-      "priority": 150,
-      "category": false,
-      "multiSelect": true,
-      "visible": true,
-      "topValues": [
-        {
-          "code": "N12",
-          "name": "Barn",
-          "count": 5,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN12",
-            "query": {
-              "value": ":categoryLevel1:N12",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N19",
-          "name": "Blommor & trädgård",
-          "count": 2,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN19",
-            "query": {
-              "value": ":categoryLevel1:N19",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N06",
-          "name": "Bröd & Kakor",
-          "count": 8,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN06",
-            "query": {
-              "value": ":categoryLevel1:N06",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N13",
-          "name": "Djur",
-          "count": 4,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN13",
-            "query": {
-              "value": ":categoryLevel1:N13",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N10",
-          "name": "Dryck",
-          "count": 13,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN10",
-            "query": {
-              "value": ":categoryLevel1:N10",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        }
-      ],
-      "values": [
-        {
-          "code": "N12",
-          "name": "Barn",
-          "count": 5,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN12",
-            "query": {
-              "value": ":categoryLevel1:N12",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N19",
-          "name": "Blommor & trädgård",
-          "count": 2,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN19",
-            "query": {
-              "value": ":categoryLevel1:N19",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N06",
-          "name": "Bröd & Kakor",
-          "count": 8,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN06",
-            "query": {
-              "value": ":categoryLevel1:N06",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N13",
-          "name": "Djur",
-          "count": 4,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN13",
-            "query": {
-              "value": ":categoryLevel1:N13",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N10",
-          "name": "Dryck",
-          "count": 13,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN10",
-            "query": {
-              "value": ":categoryLevel1:N10",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N02",
-          "name": "Fisk & Skaldjur",
-          "count": 2,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN02",
-            "query": {
-              "value": ":categoryLevel1:N02",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N05",
-          "name": "Frukt & Grönt",
-          "count": 6,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN05",
-            "query": {
-              "value": ":categoryLevel1:N05",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N08",
-          "name": "Fryst",
-          "count": 6,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN08",
-            "query": {
-              "value": ":categoryLevel1:N08",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N09",
-          "name": "Färdigmat",
-          "count": 6,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN09",
-            "query": {
-              "value": ":categoryLevel1:N09",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N11",
-          "name": "Glass, godis & snacks",
-          "count": 5,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN11",
-            "query": {
-              "value": ":categoryLevel1:N11",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N14",
-          "name": "Hem & Städ",
-          "count": 23,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN14",
-            "query": {
-              "value": ":categoryLevel1:N14",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N15",
-          "name": "Hälsa & Skönhet",
-          "count": 15,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN15",
-            "query": {
-              "value": ":categoryLevel1:N15",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N01",
-          "name": "Kött, chark & fågel",
-          "count": 16,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN01",
-            "query": {
-              "value": ":categoryLevel1:N01",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N04",
-          "name": "Mejeri, ost & ägg",
-          "count": 16,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN04",
-            "query": {
-              "value": ":categoryLevel1:N04",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N07",
-          "name": "Skafferi",
-          "count": 27,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN07",
-            "query": {
-              "value": ":categoryLevel1:N07",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "N03",
-          "name": "Vegetariskt",
-          "count": 1,
-          "query": {
-            "url": "%3AcategoryLevel1%3AN03",
-            "query": {
-              "value": ":categoryLevel1:N03",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        }
-      ]
+      "name": "Veganskt smörgåspålägg",
+      "potentialPromotions": [{ "price": 26, "qualifyingCount": 2 }],
+      "price": "16.9"
     },
     {
-      "code": "campaignType",
-      "name": "campaignType",
-      "priority": 100,
-      "category": false,
-      "multiSelect": true,
-      "visible": true,
-      "topValues": null,
-      "values": [
-        {
-          "code": "GENERAL",
-          "name": "Generella",
-          "count": 133,
-          "query": {
-            "url": "%3AcampaignType%3AGENERAL",
-            "query": {
-              "value": ":campaignType:GENERAL",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "LOYALTY",
-          "name": "Willys Plus",
-          "count": 24,
-          "query": {
-            "url": "%3AcampaignType%3ALOYALTY",
-            "query": {
-              "value": ":campaignType:LOYALTY",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        }
-      ]
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07314720738338_C1R1_s02"
+      },
+      "name": "Fruktdryck, bärdryck",
+      "potentialPromotions": [{ "price": 29, "qualifyingCount": 2 }],
+      "price": "17.5"
     },
     {
-      "code": "label",
-      "name": "label",
-      "priority": 50,
-      "category": false,
-      "multiSelect": false,
-      "visible": true,
-      "topValues": null,
-      "values": [
-        {
-          "code": "asc_fish",
-          "name": "ASC-märkt fisk",
-          "count": 1,
-          "query": {
-            "url": "%3Alabel%3Aasc_fish",
-            "query": {
-              "value": ":label:asc_fish",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "ecological",
-          "name": "Ekologisk",
-          "count": 6,
-          "query": {
-            "url": "%3Alabel%3Aecological",
-            "query": {
-              "value": ":label:ecological",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "fairtrade_facet",
-          "name": "Fairtrade",
-          "count": 2,
-          "query": {
-            "url": "%3Alabel%3Afairtrade_facet",
-            "query": {
-              "value": ":label:fairtrade_facet",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "glutenfree",
-          "name": "Glutenfri",
-          "count": 3,
-          "query": {
-            "url": "%3Alabel%3Aglutenfree",
-            "query": {
-              "value": ":label:glutenfree",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "laktosfree",
-          "name": "Laktosfri",
-          "count": 8,
-          "query": {
-            "url": "%3Alabel%3Alaktosfree",
-            "query": {
-              "value": ":label:laktosfree",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "environmental_facet",
-          "name": "Miljömärkt",
-          "count": 25,
-          "query": {
-            "url": "%3Alabel%3Aenvironmental_facet",
-            "query": {
-              "value": ":label:environmental_facet",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "msc_fish",
-          "name": "MSC-märkt fisk",
-          "count": 5,
-          "query": {
-            "url": "%3Alabel%3Amsc_fish",
-            "query": {
-              "value": ":label:msc_fish",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "keyhole",
-          "name": "Nyckelhålet",
-          "count": 16,
-          "query": {
-            "url": "%3Alabel%3Akeyhole",
-            "query": {
-              "value": ":label:keyhole",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        },
-        {
-          "code": "swedish_flag",
-          "name": "Svenskt",
-          "count": 17,
-          "query": {
-            "url": "%3Alabel%3Aswedish_flag",
-            "query": {
-              "value": ":label:swedish_flag",
-              "filterQueries": [],
-              "searchQueryContext": null,
-              "searchType": null
-            }
-          },
-          "selected": false
-        }
-      ]
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083479045_C1N1_s02"
+      },
+      "name": "Ekologisk äppelmos",
+      "potentialPromotions": [{ "price": 15.9, "qualifyingCount": 1 }],
+      "price": "17.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05060335635716_C1N1_s02"
+      },
+      "name": "Energidryck",
+      "potentialPromotions": [{ "price": 25, "qualifyingCount": 2 }],
+      "price": "17.9"
+    },
+    {
+      "image": {
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/h3c/h8c/15153653710878/axfood_300_Färsk pasta Garant x2 SFMC.jpg"
+      },
+      "name": "Färsk pasta",
+      "potentialPromotions": [{ "price": 28, "qualifyingCount": 2 }],
+      "price": "17.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311442111807_C1N1_s04"
+      },
+      "name": "Lättmajonnäs",
+      "potentialPromotions": [{ "price": 15.9, "qualifyingCount": 1 }],
+      "price": "17.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350068291210_C1N1_s06"
+      },
+      "name": "Milkshake",
+      "potentialPromotions": [{ "price": 33, "qualifyingCount": 2 }],
+      "price": "18.5"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04005900553584_C1N1_s01"
+      },
+      "name": "Dubbeldusch",
+      "potentialPromotions": [{ "price": 14.9, "qualifyingCount": 1 }],
+      "price": "18.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311043000685_C1L1_s01"
+      },
+      "name": "Ekologisk havregryn",
+      "potentialPromotions": [{ "price": 16.9, "qualifyingCount": 1 }],
+      "price": "18.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083478055_C1L1_s01"
+      },
+      "name": "Ekologisk pasta korta former",
+      "potentialPromotions": [{ "price": 15.9, "qualifyingCount": 1 }],
+      "price": "18.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08000139007095_C1L1_s02"
+      },
+      "name": "Korta pasta former",
+      "potentialPromotions": [{ "price": 33, "qualifyingCount": 2 }],
+      "price": "18.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07394376616037_C1R1_s03"
+      },
+      "name": "Ikaffe, no sugars",
+      "potentialPromotions": [{ "price": 34, "qualifyingCount": 2 }],
+      "price": "19.5"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08720182104014_C1N1_s01"
+      },
+      "name": "Buljongtärning",
+      "potentialPromotions": [{ "price": 19.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042002079_C1N1_s01"
+      },
+      "name": "Champinjoner",
+      "potentialPromotions": [{ "price": 14.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04008871215550_S01"
+      },
+      "name": "Fryspåsar",
+      "potentialPromotions": [{ "price": 35, "qualifyingCount": 2 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/h33/h22/12085705768990/garant fröbröd ostbröd x2 SFMC_axfood_300"
+      },
+      "name": "Fröbröd, ostbröd 4-pack",
+      "potentialPromotions": [{ "price": 26, "qualifyingCount": 2 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083493812_C1N1_s01"
+      },
+      "name": "Intimtvål",
+      "potentialPromotions": [{ "price": 14.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083435935_C1L1_s01"
+      },
+      "name": "Laktosfri yoghurt",
+      "potentialPromotions": [{ "price": 16.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083490446_C1N1_s02"
+      },
+      "name": "Matgrädde",
+      "potentialPromotions": [{ "price": 17.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08718951559011_C1N1_s01"
+      },
+      "name": "Tandborste, tandkräm, barntandborste, barntandkräm",
+      "potentialPromotions": [{ "price": 14.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083461279_C1L1_s01"
+      },
+      "name": "Te",
+      "potentialPromotions": [{ "price": 49, "qualifyingCount": 3 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311440056605_C1N1_s04"
+      },
+      "name": "Äkta, citron majonnäs",
+      "potentialPromotions": [{ "price": 17.9, "qualifyingCount": 1 }],
+      "price": "19.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04062300122284_C1N1_s03"
+      },
+      "name": "Barnmat",
+      "potentialPromotions": [{ "price": 55, "qualifyingCount": 4 }],
+      "price": "20.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04014400400007_C1L1_s01"
+      },
+      "name": "Toffifee",
+      "potentialPromotions": [{ "price": 17.9, "qualifyingCount": 1 }],
+      "price": "20.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08718951128279_C1N1_s03"
+      },
+      "name": "Deodorant",
+      "potentialPromotions": [{ "price": 16.9, "qualifyingCount": 1 }],
+      "price": "21.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310867561419_C1L1_s02"
+      },
+      "name": "Juice",
+      "potentialPromotions": [{ "price": 17.9, "qualifyingCount": 1 }],
+      "price": "21.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311043004690_C1N1_s01"
+      },
+      "name": "Mönstrade påskservetter 20-pack",
+      "potentialPromotions": [{ "price": 35, "qualifyingCount": 2 }],
+      "price": "21.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350113940285_C1N1_s01"
+      },
+      "name": "Ris",
+      "potentialPromotions": [{ "price": 30, "qualifyingCount": 2 }],
+      "price": "21.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08005110413544_C1N1_s01"
+      },
+      "name": "Ekologiska hela, tärnade tomater",
+      "potentialPromotions": [{ "price": 18.9, "qualifyingCount": 1 }],
+      "price": "22.5"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08714789732879_C1N1_s03"
+      },
+      "name": "Duschcreme",
+      "potentialPromotions": [{ "price": 16.9, "qualifyingCount": 1 }],
+      "price": "22.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04005900387028_C1N1_s02"
+      },
+      "name": "Duschkräm, duschgel",
+      "potentialPromotions": [{ "price": 17.9, "qualifyingCount": 1 }],
+      "price": "22.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083451751_C1N1_s02"
+      },
+      "name": "Riven ost",
+      "potentialPromotions": [{ "price": 19.9, "qualifyingCount": 1 }],
+      "price": "22.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083489068_C1N1_s01"
+      },
+      "name": "Torrschampo",
+      "potentialPromotions": [{ "price": 16.9, "qualifyingCount": 1 }],
+      "price": "22.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083468629_C1L1_s01"
+      },
+      "name": "Lasagne",
+      "potentialPromotions": [{ "price": 20.9, "qualifyingCount": 1 }],
+      "price": "23.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08076809513739_C1C1_s03"
+      },
+      "name": "Pastasås",
+      "potentialPromotions": [{ "price": 19.9, "qualifyingCount": 1 }],
+      "price": "23.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07038516550361_C1N1_s01"
+      },
+      "name": "Tandborste, tandkräm, barntandborste, barntandborste",
+      "potentialPromotions": [{ "price": 30, "qualifyingCount": 2 }],
+      "price": "23.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042000686_C1L1_s01"
+      },
+      "name": "Ekologisk bladselleri",
+      "potentialPromotions": [{ "price": 22.9, "qualifyingCount": 1 }],
+      "price": "24.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083477089_C1N1_s01"
+      },
+      "name": "Rapsolja",
+      "potentialPromotions": [{ "price": 21.9, "qualifyingCount": 1 }],
+      "price": "24.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/06408432088933_C1R1_s07"
+      },
+      "name": "Smaksatt yoghurt",
+      "potentialPromotions": [{ "price": 21.9, "qualifyingCount": 1 }],
+      "price": "24.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310040034525_C1N1_s01"
+      },
+      "name": "Polly, Bridge",
+      "potentialPromotions": [{ "price": 45, "qualifyingCount": 2 }],
+      "price": "25.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/03036810100576_C1N1_s02"
+      },
+      "name": "Dijonsenap",
+      "potentialPromotions": [{ "price": 23.9, "qualifyingCount": 1 }],
+      "price": "26.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083481338_C1L1_s01"
+      },
+      "name": "Ekologiska bönor",
+      "potentialPromotions": [{ "price": 23.9, "qualifyingCount": 1 }],
+      "price": "26.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07391196003641_C1N1_s01"
+      },
+      "name": "Skivad salami",
+      "potentialPromotions": [{ "price": 23.9, "qualifyingCount": 1 }],
+      "price": "26.9"
+    },
+    {
+      "image": {
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/h40/hf2/9574299369502/kryddkorv_x2_550_axfood_300"
+      },
+      "name": "Kryddkorv",
+      "potentialPromotions": [{ "price": 40, "qualifyingCount": 2 }],
+      "price": "27.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05774540907208_C1N1_s02"
+      },
+      "name": "Marsipanägg",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "27.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07312200010110_C1L1_s01"
+      },
+      "name": "Skogaholmslimpa",
+      "potentialPromotions": [{ "price": 19.9, "qualifyingCount": 1 }],
+      "price": "27.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/06416453032613_C1N1_s01"
+      },
+      "name": "Dumle, marianne",
+      "potentialPromotions": [{ "price": 48, "qualifyingCount": 2 }],
+      "price": "28.9"
+    },
+    {
+      "image": {
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/hce/h08/15351863607326/axfood_300_Ekologisk torkad frukt, kokoschips Garant Eko x2 SFMC.jpg"
+      },
+      "name": "Ekologisk torkad frukt, kokoschips",
+      "potentialPromotions": [{ "price": 40, "qualifyingCount": 2 }],
+      "price": "28.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042002482_C1N1_s02"
+      },
+      "name": "Ekologiska fairtrade bananer",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": null }],
+      "price": "28.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07330797077200_C1N1_s01"
+      },
+      "name": "Skivat smörgåspålägg",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "28.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08001090291035_C1N1_s02"
+      },
+      "name": "Tandkräm",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "28.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083452482_C1L1_s01"
+      },
+      "name": "Avfallspåse",
+      "potentialPromotions": [{ "price": 22.9, "qualifyingCount": 1 }],
+      "price": "29.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083448638_C1N1_s05"
+      },
+      "name": "Crème fraiche",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "29.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08000500026731_C1R1_s01"
+      },
+      "name": "Kinder 3-pack",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "29.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083450617_C1N1_s01"
+      },
+      "name": "Solroskärnor",
+      "potentialPromotions": [{ "price": 25.9, "qualifyingCount": 1 }],
+      "price": "29.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07322550052791_C1N1_s02"
+      },
+      "name": "Fond",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "33.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05410103915654_C1N1_s02"
+      },
+      "name": "Schampo, balsam",
+      "potentialPromotions": [{ "price": 48, "qualifyingCount": 2 }],
+      "price": "33.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042002253_C1N1_s01"
+      },
+      "name": "Cocktailtomater på kvist",
+      "potentialPromotions": [{ "price": 24.9, "qualifyingCount": 1 }],
+      "price": "34.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08001665722131_C1N1_s01"
+      },
+      "name": "Färsk gnocchi",
+      "potentialPromotions": [{ "price": 28.9, "qualifyingCount": 1 }],
+      "price": "34.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08711000360569_C1N1_s02"
+      },
+      "name": "Kaffekapslar 10-pack",
+      "potentialPromotions": [{ "price": 89, "qualifyingCount": 3 }],
+      "price": "34.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310960044451_C1L1_s01"
+      },
+      "name": "Levainbröd",
+      "potentialPromotions": [{ "price": 22.9, "qualifyingCount": 1 }],
+      "price": "34.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/06430056887555_C1N1_s01"
+      },
+      "name": "Tuggpinne 11-pack",
+      "potentialPromotions": [{ "price": 59, "qualifyingCount": 2 }],
+      "price": "34.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340005406227_C1N1_s01"
+      },
+      "name": "Cheez doodles",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "35.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311041056318_C1N1_s01"
+      },
+      "name": "Falukorv",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "35.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08700216219358_C1N1_s01"
+      },
+      "name": "Schampo, balsam",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "35.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04000539670701_C1N1_s02"
+      },
+      "name": "Guldhare mini, får mini, mini kycklingar",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "36.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07702018477418_C1N1_s02"
+      },
+      "name": "Rakhyvel, rakgel",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "36.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05714970005471_C1N1_s01"
+      },
+      "name": "Luktborttagningsspray",
+      "potentialPromotions": [{ "price": 32.9, "qualifyingCount": 1 }],
+      "price": "37.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083427923_C1N1_s01"
+      },
+      "name": "Prosciutto crudo",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "37.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/03830042432272_C1N1_s02"
+      },
+      "name": "Kycklingkorv",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "38.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08000430138931_C1C1_s01"
+      },
+      "name": "Burrata",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042000501_C1C0_s02"
+      },
+      "name": "Ekologiska äpplen Royal Gala",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": null }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083495281_C1L1_s02"
+      },
+      "name": "Glass 6-pack",
+      "potentialPromotions": [{ "price": 69, "qualifyingCount": 2 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042000150_C1L1_s01"
+      },
+      "name": "Gröna vindruvor",
+      "potentialPromotions": [{ "price": 29.9, "qualifyingCount": 1 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083486128_C1L1_s01"
+      },
+      "name": "Microfiberduk",
+      "potentialPromotions": [{ "price": 65, "qualifyingCount": 2 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042009269_C1C1_s01"
+      },
+      "name": "Påsktazett",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05714970005426_C1N1_s01"
+      },
+      "name": "Rengöring",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350013130434_C1N1_s01"
+      },
+      "name": "Ryggfilé av alaska pollock",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "39.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08714789726168_C1N1_s02"
+      },
+      "name": "Munskölj",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "41.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310130013263_C1R1_s01"
+      },
+      "name": "Granola",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "44.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311042009283_C1C1_s01"
+      },
+      "name": "Påsklilja Carlton",
+      "potentialPromotions": [{ "price": 34.9, "qualifyingCount": 1 }],
+      "price": "44.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340012503216_C1N1_s02"
+      },
+      "name": "Salsiccia",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "44.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/00000059032823_C1L1_s01"
+      },
+      "name": "Nutella",
+      "potentialPromotions": [{ "price": 45.9, "qualifyingCount": 1 }],
+      "price": "45.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05012254061190_C1N1_s02"
+      },
+      "name": "Scahmpo, balsam",
+      "potentialPromotions": [{ "price": 36.9, "qualifyingCount": 1 }],
+      "price": "45.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08003340098005_C1L0_s01"
+      },
+      "name": "Lindorkulor",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "46.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083456442_C1L1_s01"
+      },
+      "name": "Antikljus 10-pack",
+      "potentialPromotions": [{ "price": 85, "qualifyingCount": 2 }],
+      "price": "48.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07317731501205_C1N1_s04"
+      },
+      "name": "Ekologiska russin",
+      "potentialPromotions": [{ "price": 42.9, "qualifyingCount": 1 }],
+      "price": "49.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350104402266_C1R1_s01"
+      },
+      "name": "Glass 4-pack",
+      "potentialPromotions": [{ "price": 44.9, "qualifyingCount": 1 }],
+      "price": "49.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083475962_C1N1_s01"
+      },
+      "name": "Kycklinginnerfilé, kycklinglårfilé",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "49.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083455834_C1N1_s02"
+      },
+      "name": "Kycklingköttbullar",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "49.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/08032841846426_C1L1_s01"
+      },
+      "name": "Tryffelsalami",
+      "potentialPromotions": [{ "price": 42.9, "qualifyingCount": 1 }],
+      "price": "49.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04015400564324_C1N1_s03"
+      },
+      "name": "Trosskydd, bindor",
+      "potentialPromotions": [{ "price": 79, "qualifyingCount": 2 }],
+      "price": "50.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311310026806_C1N1_s02"
+      },
+      "name": "Kryddor",
+      "potentialPromotions": [{ "price": 44.9, "qualifyingCount": 1 }],
+      "price": "51.5"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/03574661011288_C1C1_s02"
+      },
+      "name": "Tampong",
+      "potentialPromotions": [{ "price": 39.9, "qualifyingCount": 1 }],
+      "price": "51.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/04001724010784_C1L1_s03"
+      },
+      "name": "Pizza",
+      "potentialPromotions": [{ "price": 95, "qualifyingCount": 2 }],
+      "price": "53.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07702018015665_C1N1_s04"
+      },
+      "name": "Rakhyvel, rakgel",
+      "potentialPromotions": [{ "price": 47.9, "qualifyingCount": 1 }],
+      "price": "53.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07350104400514_C1N1_s01"
+      },
+      "name": "Glass",
+      "potentialPromotions": [{ "price": 46.9, "qualifyingCount": 1 }],
+      "price": "54.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310072000024_C1L1_s01"
+      },
+      "name": "Påskmust 12-pack",
+      "potentialPromotions": [{ "price": 47.9, "qualifyingCount": 1 }],
+      "price": "54.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310760012896_C1N1_s02"
+      },
+      "name": "Kaffe",
+      "potentialPromotions": [{ "price": 99, "qualifyingCount": 2 }],
+      "price": "57.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310500186641_C1N1_s02"
+      },
+      "name": "Fish & crisp nuggets, gourmetfiléer",
+      "potentialPromotions": [{ "price": 49.9, "qualifyingCount": 1 }],
+      "price": "58.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07300321373009_C1N1_s01"
+      },
+      "name": "Kycklingburgare, nuggets",
+      "potentialPromotions": [{ "price": 53.9, "qualifyingCount": 1 }],
+      "price": "59.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07041111124929_C1N1_s01"
+      },
+      "name": "Cashewnötter",
+      "potentialPromotions": [{ "price": 49.9, "qualifyingCount": 1 }],
+      "price": "61.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07310050012278_C1L1_s03"
+      },
+      "name": "Kaffe",
+      "potentialPromotions": [{ "price": 54.9, "qualifyingCount": 1 }],
+      "price": "62.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083486548_C1N1_s01"
+      },
+      "name": "Pistaschnötter",
+      "potentialPromotions": [{ "price": 49.9, "qualifyingCount": 1 }],
+      "price": "63.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083487323_C1N1_s01"
+      },
+      "name": "Pancetta",
+      "potentialPromotions": [{ "price": 59.9, "qualifyingCount": 1 }],
+      "price": "64.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340083476860_C1N1_s03"
+      },
+      "name": "Parmigiano reggiano",
+      "potentialPromotions": [{ "price": 49.9, "qualifyingCount": 1 }],
+      "price": "64.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07311870011076_C1L1_s01"
+      },
+      "name": "Bregott storpack",
+      "potentialPromotions": [{ "price": 54.9, "qualifyingCount": 1 }],
+      "price": "68.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05410076390830_C1N1_s04"
+      },
+      "name": "Hårvård",
+      "potentialPromotions": [{ "price": 49.9, "qualifyingCount": 1 }],
+      "price": "68.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07340062471565_C1L1_s02"
+      },
+      "name": "Ekologisk nötfärs",
+      "potentialPromotions": [{ "price": 59.9, "qualifyingCount": 1 }],
+      "price": "69.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/02359730100008_C1L1_s01"
+      },
+      "name": "Marinerade kycklingben",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": null }],
+      "price": "69.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05707196263602_C1N1_s02"
+      },
+      "name": "Spareribs",
+      "potentialPromotions": [{ "price": 59.9, "qualifyingCount": 1 }],
+      "price": "74.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/05700551171949_C1N1_s01"
+      },
+      "name": "Tuggpinnar",
+      "potentialPromotions": [{ "price": 74.9, "qualifyingCount": 1 }],
+      "price": "83.9"
+    },
+    {
+      "image": {
+        "url": "https://d2rfo6yapuixuu.cloudfront.net/hf8/h17/14532814110750/axfood_300_null"
+      },
+      "name": "Präst®, Grevé®, Herrgård®",
+      "potentialPromotions": [{ "price": 59.9, "qualifyingCount": 1 }],
+      "price": "89.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07391603140440_C1N1_s03"
+      },
+      "name": "Ingefära shot",
+      "potentialPromotions": [{ "price": 16, "qualifyingCount": 2 }],
+      "price": "9.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/03600520297613_C1N1_s02"
+      },
+      "name": "Ansiktsrengöring, ansiktskräm, borttagning",
+      "potentialPromotions": [{ "price": null, "qualifyingCount": 1 }],
+      "price": "94.9"
+    },
+    {
+      "image": {
+        "url": "https://assets.axfood.se/image/upload/f_auto,t_200/07300322544002_C1N1_s04"
+      },
+      "name": "Kycklingfilé",
+      "potentialPromotions": [{ "price": 89.9, "qualifyingCount": 1 }],
+      "price": "99.9"
     }
   ]
 }

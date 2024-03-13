@@ -1,9 +1,11 @@
 module Recipe where
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Set (Set, intersection, size, toList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Debug.Trace (traceShow, traceShowId)
 import GHC.Generics (Generic)
 import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
@@ -17,6 +19,7 @@ data Recipe = Recipe
     ingredients :: !(Set Product)
   }
   deriving (Show, Eq, Ord, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 data RecipeForm = RecipeForm
   { unvalidatedName :: !Text,
@@ -45,6 +48,5 @@ parseIngredients = Set.fromList . Text.splitOn "\r\n"
 -- | at least n ingredients are on promotion
 recipeSuggestions :: Set Recipe -> Set Promotion -> Int -> Set Recipe
 recipeSuggestions recipes promotions n =
-  Set.filter
-    ((>= n) . size . (`intersection` Set.map Willys.product promotions) . ingredients)
-    recipes
+  let nCommonIngredients = ((>= n) . size . (Set.map Willys.product promotions `intersection`) . ingredients)
+   in Set.filter nCommonIngredients recipes

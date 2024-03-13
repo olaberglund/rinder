@@ -1,13 +1,14 @@
 module Server where
 
 import App
+import Control.Arrow (left)
 import Control.Monad.IO.Class (liftIO)
-import Data.Maybe (catMaybes)
-import Data.Set (Set, fromList, intersection, toList)
+import Data.Aeson (eitherDecode, encode)
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as LBS
+import Data.Set (Set, intersection)
 import Data.Set qualified as Set
 import Data.Text hiding (drop, head, map, tail)
-import Data.Text qualified as Text hiding (drop, head, map, tail)
-import Data.Text.IO qualified as TIO
 import GHC.Generics (Generic)
 import Local qualified
 import Lucid
@@ -15,13 +16,13 @@ import Lucid.Htmx (useHtmx)
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Network.HTTP.Types (hLocation)
-import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName))
+import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName), recipeSuggestions)
 import Servant
 import Servant.Client
 import Servant.Client.Core qualified as Core
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
-import Willys (Product (Product), Promotion)
+import Willys (Promotion)
 import Willys qualified
 
 data RootApi as = RootAPI
@@ -40,45 +41,43 @@ app = serve (Proxy @Api) . server
 server :: Env a -> RootApi AsServer
 server env = RootAPI (homePageHandler env) (recipePageHandler env) (serveDirectoryWebApp "static") (newRecipeHandler env)
 
-newRecipeHandler :: Env a -> RecipeForm -> Handler NoContent
-newRecipeHandler env recipeForm =
-  liftIO (runClientDefault env.manager env.baseUrl env.fetchProducts)
-    >>= \case
-      Left _err -> throwError err500
-      Right products -> do
-        liftIO $ TIO.appendFile "recipes.txt" $ formatRecipe (mkRecipe recipeForm products)
-        throwError err303 {errHeaders = [(hLocation, "/recept")]}
-  where
-    formatRecipe :: Recipe -> Text
-    formatRecipe (Recipe name ingredients) = name <> "\n" <> (Text.unlines $ map Willys.name $ toList ingredients) <> "\n"
-
-    mkRecipe :: RecipeForm -> Set Product -> Recipe
-    mkRecipe rcpf products =
-      let maybeIngredients = Set.map Product (unvalidatedIngredients rcpf)
-       in Recipe (rcpf.unvalidatedName) (maybeIngredients `intersection` products)
+redirect :: BS.ByteString -> Handler a
+redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
 
 recipePageHandler :: Env a -> Handler RecipePage
-recipePageHandler env = do
-  recipes <- liftIO $ do
-    rawText <- TIO.readFile "recipes.txt"
-    let recipes = map parseRecipe $ Text.splitOn "\n\n" rawText
-    return (catMaybes recipes)
-  liftIO (runClientDefault env.manager env.baseUrl env.fetchProducts) >>= \case
-    Right products -> return $ RecipePage (toList products) recipes
-    Left _err -> return (RecipePage [] [])
-  where
-    parseRecipe :: Text -> Maybe Recipe
-    parseRecipe raw = Recipe <$> (fst <$> components) <*> (fromList . map Product . snd <$> components)
-      where
-        components = case Text.lines raw of
-          (name : ingrds) -> Just (name, ingrds)
-          _ -> Nothing
+recipePageHandler env = liftIO $ do
+  products <- runClientDefault env.manager env.baseUrl env.fetchProducts
+  recipes <- eitherDecode <$> LBS.readFile "recipes.json"
+  case RecipePage <$> left show products <*> recipes of
+    Left err -> putStrLn err >> return (RecipePage mempty mempty)
+    Right page -> return page
 
 homePageHandler :: Env a -> Handler HomePage
-homePageHandler env =
-  liftIO (runClientDefault env.manager env.baseUrl env.fetchPromotions) >>= \case
-    Right promos -> return $ HomePage (toList promos)
-    Left _err -> return (HomePage [])
+homePageHandler env = liftIO $ do
+  promotions <- runClientDefault env.manager env.baseUrl env.fetchPromotions
+  recipes <- eitherDecode <$> LBS.readFile "recipes.json"
+  case HomePage <$> left show promotions <*> recipes of
+    Left err -> putStrLn err >> return (HomePage mempty mempty)
+    Right page -> return page
+
+newRecipeHandler :: Env a -> RecipeForm -> Handler NoContent
+newRecipeHandler env recipeForm = do
+  liftIO $ do
+    products <- runClientDefault env.manager env.baseUrl env.fetchProducts
+    oldRecipes <- eitherDecode <$> LBS.readFile "recipes.json"
+    case addRecipe <$> left show products <*> oldRecipes of
+      Left err -> putStrLn err
+      Right recipes -> LBS.writeFile "recipes.json" $ encode recipes
+
+  redirect "/recept"
+  where
+    addRecipe :: Set Willys.Product -> Set Recipe -> Set Recipe
+    addRecipe products oldRecipes = mkRecipe recipeForm products `Set.insert` oldRecipes
+
+    mkRecipe :: RecipeForm -> Set Willys.Product -> Recipe
+    mkRecipe rcpf products =
+      let ingredients = Set.filter (\p -> p.name `Set.member` unvalidatedIngredients rcpf) products
+       in Recipe (rcpf.unvalidatedName) (ingredients `intersection` products)
 
 runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)
 runClientDefault mgr url action = runClientM action (addUserAgent $ mkClientEnv mgr url)
@@ -101,17 +100,20 @@ addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . C
     userAgent :: Text
     userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
 
-newtype HomePage = HomePage [Promotion]
+data HomePage = HomePage (Set Promotion) (Set Recipe)
 
 instance ToHtml HomePage where
-  toHtml (HomePage promotions) = baseTemplate $ do
+  toHtml (HomePage promotions recipes) = baseTemplate $ do
     toHtml Navbar
     h1_ "Välkommen till Olas sida"
+    h2_ "Veckans recept"
+    mapM_ toHtml $ recipeSuggestions recipes promotions 1
+    h2_ "Veckans erbjudanden"
     mapM_ toHtml promotions
 
   toHtmlRaw = toHtml
 
-data RecipePage = RecipePage [Product] [Recipe]
+data RecipePage = RecipePage (Set Willys.Product) (Set Recipe)
 
 instance ToHtml RecipePage where
   toHtml (RecipePage products recipes) = baseTemplate $ do
@@ -157,7 +159,7 @@ instance ToHtml Navbar where
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
 
-data RecipeFormComponent = RecipeFormComponent [Product]
+data RecipeFormComponent = RecipeFormComponent (Set Willys.Product)
   deriving (Generic, Show)
 
 instance ToHtml RecipeFormComponent where

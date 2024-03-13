@@ -3,7 +3,7 @@ module Main where
 import Control.Concurrent (forkIO)
 import Local qualified
 import Network.Wai.Handler.Warp (run)
-import Server (app, localEnv)
+import Server (app, localEnv, productionEnv)
 import Prelude hiding (putStrLn, readFile, writeFile)
 
 main :: IO ()
