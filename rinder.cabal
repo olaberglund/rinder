@@ -73,6 +73,7 @@ executable rinder
                     ,   DerivingStrategies
                     ,   DerivingVia
                     ,   DeriveAnyClass
+                    ,   DuplicateRecordFields
 
 
     -- Other library packages from which modules are imported.

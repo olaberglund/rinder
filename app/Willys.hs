@@ -5,16 +5,16 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BS
 import Data.Function (on)
+import Data.Map qualified as Map
 import Data.Ord (comparing)
 import Data.Set (Set, union, unions)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Lucid
 import Servant
 import Servant.Client hiding (Response)
 import Prelude hiding (product)
-
--- TODO: Let products contain multiple urls, to remove duplicates in product list
 
 type WillysAPI = NamedRoutes WillysRootAPI
 
@@ -37,7 +37,7 @@ fetchProducts :: ClientM (Set Product)
 fetchProducts = do
   prods <- liftIO (mapConcurrently (return . fetchProductsOfCategory) productHrefs)
   allprods <- unions <$> sequence prods
-  _ <- liftIO $ BS.writeFile "products.json" (encode (Response allprods (Pagination (-1)))) -- to update the local file
+  _ <- liftIO $ BS.writeFile "products.json" (encode (Response (superProducts allprods) (Pagination (-1)))) -- to update the local file
   return allprods
   where
     fetchProductsOfCategory :: Text -> ClientM (Set Product)
@@ -99,14 +99,35 @@ data Product = Product {name :: Text, image :: ImageUrl}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 
+-- | Since #(SuperProduct) <= #(Willys.Product),
+-- | this is the only way to get a SuperProduct
+superProducts :: Set Willys.Product -> Set SuperProduct
+superProducts products =
+  let nameMap = Set.foldl groupByName Map.empty products
+   in Set.fromList $ map (uncurry SuperProduct) $ Map.toList nameMap
+  where
+    groupByName :: Map.Map Text (Set ImageUrl) -> Willys.Product -> Map.Map Text (Set ImageUrl)
+    groupByName acc p = Map.insertWith (<>) p.name (Set.singleton p.image) acc
+
+-- Think of an image url like an id
+data SuperProduct = SuperProduct {name :: Text, imageUrls :: Set ImageUrl}
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance Eq SuperProduct where
+  (==) = (==) `on` (.name)
+
+instance Ord SuperProduct where
+  compare = comparing (.name)
+
 instance Eq Product where
-  p1 == p2 = p1.name == p2.name || p1.image == p2.image
+  p1 == p2 = p1.image == p2.image
 
 instance Ord Product where
   compare = comparing image
 
 instance ToHtml Product where
-  toHtml = toHtml . name
+  toHtml = toHtml . (.name)
   toHtmlRaw = toHtml
 
 data PotentialPromotion = PotentialPromotion

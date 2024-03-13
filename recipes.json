@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "ingredients": [
+      {
+        "image": {
+          "url": "https://assets.axfood.se/image/upload/f_auto,t_200/00000040084725_C1N1_s02"
+        },
+        "name": "Milk-slice"
+      },
+      {
+        "image": {
+          "url": "https://assets.axfood.se/image/upload/f_auto,t_200/00000040084794_C1R1_s01"
+        },
+        "name": "Milk-slice"
+      }
+    ],
+    "name": ""
+  }
+]

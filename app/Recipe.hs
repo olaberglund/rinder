@@ -5,7 +5,6 @@ import Data.Set (Set, intersection, size, toList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Debug.Trace (traceShow, traceShowId)
 import GHC.Generics (Generic)
 import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
