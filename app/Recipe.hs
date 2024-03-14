@@ -9,7 +9,6 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
-import Lucid.Html5
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 import Willys (Promotion, SuperProduct, image, imageUrls, product)
 import Prelude hiding (product)
@@ -34,9 +33,7 @@ instance FromForm RecipeForm where
       <*> (parseIngredients <$> parseUnique "ingredients" form)
 
 instance ToHtml Recipe where
-  toHtml (Recipe name ingredients) = do
-    h2_ (toHtml name)
-    mapM_ (span_ . toHtml) (toList ingredients)
+  toHtml (Recipe name _ingredients) = toHtml name
 
   toHtmlRaw = toHtml
 

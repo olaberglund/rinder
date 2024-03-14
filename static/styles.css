@@ -4,22 +4,23 @@
 }
 
 body {
-  font-size: 20px;
+  font-size: 18px;
+  line-height: 1.6;
   background-color: #121212;
   font-family: fonten, sans-serif;
   color: #fff;
+  height: 100%;
   display: flex;
   justify-content: center;
   flex-direction: column;
   max-width: 650px;
   margin: 40px auto;
+  padding: 0 10px;
 }
 
 nav ul {
   display: flex;
-  width: 100%;
   justify-content: center;
-  gap: 20px;
   list-style: none;
 }
 
@@ -75,4 +76,37 @@ input {
 #recipe-list {
   display: flex;
   flex-direction: column;
+}
+
+.promotions-container {
+  overflow-y: auto;
+}
+
+.products {
+  display: flex;
+  height: 320px;
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 10px;
+  overflow-y: auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+.product {
+  width: 100px;
+  height: 100px;
+}
+
+.product-container {
+  display: flex;
+  width: 100px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-name {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }

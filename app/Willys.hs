@@ -4,16 +4,22 @@ import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BS
+import Data.ByteString.Lazy qualified as LBS
+import Data.Foldable (fold)
 import Data.Function (on)
 import Data.Map qualified as Map
 import Data.Ord (comparing)
 import Data.Set (Set, union, unions)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid
+import Network.HTTP.Client (Manager, httpLbs, parseRequest, responseBody)
+import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
 import Servant.Client hiding (Response)
+import Servant.Client.Core qualified as Core
 import Prelude hiding (product)
 
 type WillysAPI = NamedRoutes WillysRootAPI
@@ -24,6 +30,15 @@ data WillysRootAPI as = WillysRootAPI
   }
   deriving (Generic)
 
+runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)
+runClientDefault mgr url action = runClientM action (addUserAgent $ mkClientEnv mgr url)
+
+addUserAgent :: ClientEnv -> ClientEnv
+addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . Core.addHeader "User-Agent" userAgent}
+  where
+    userAgent :: Text
+    userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
+
 apiClient :: WillysRootAPI (AsClientT ClientM)
 apiClient = client (Proxy @WillysAPI)
 
@@ -33,12 +48,49 @@ fetchPromotions = do
   _ <- liftIO $ BS.writeFile "promotions.json" (encode promotions) -- to update the local file
   return $ results promotions
 
-fetchProducts :: ClientM (Set Product)
+fetchProducts :: IO (Either ClientError (Set Product))
 fetchProducts = do
-  prods <- liftIO (mapConcurrently (return . fetchProductsOfCategory) productHrefs)
-  allprods <- unions <$> sequence prods
-  _ <- liftIO $ BS.writeFile "products.json" (encode (Response (superProducts allprods) (Pagination (-1)))) -- to update the local file
-  return allprods
+  mgr <- newTlsManager
+  url <- parseBaseUrl "https://www.willys.se"
+  allCalls <- fetchProducts'
+  runClientDefault mgr url (collect allCalls)
+  where
+    fetchProductsOfCategory :: Text -> ClientM (Set Product)
+    fetchProductsOfCategory href = do
+      (Response res (Pagination tot)) <- fetchProductsOnPage href 0
+      remainingCalls <- liftIO $ mapConcurrently (return . fetchProductsOnPage href) [1 .. tot - 1]
+      remRes <- sequence remainingCalls
+      return $ res `union` (unions $ results <$> remRes)
+
+    fetchProductsOnPage :: Text -> Int -> ClientM (Response Product)
+    fetchProductsOnPage href page = apiClient // getProducts /: href /: Just 100 /: Just page
+
+    fetchProducts' :: IO [ClientM (Set Product)]
+    fetchProducts' = mapConcurrently (return . fetchProductsOfCategory) productHrefs
+
+    collect = fmap unions . sequence
+
+downloadImages :: Set SuperProduct -> IO ()
+downloadImages products = mapM_ download (Set.map url $ fold $ Set.map imageUrls products)
+  where
+    download :: Text -> IO ()
+    download url = do
+      mgr <- newTlsManager
+      req <- parseRequest (Text.unpack url)
+      img <- Network.HTTP.Client.responseBody <$> httpLbs req mgr
+      LBS.writeFile ("static/images/products/" <> (Text.unpack $ Text.replace "/" ":" url)) img
+      return ()
+
+updateProducts :: IO ()
+updateProducts = do
+  mgr <- newTlsManager
+  url <- parseBaseUrl "https://www.willys.se"
+  prods <- mapConcurrently (return . fetchProductsOfCategory) productHrefs
+  res <- runClientDefault mgr url $ unions <$> sequence prods
+  case res of
+    Left e -> print e
+    Right allprods ->
+      BS.writeFile "products.json" (encode (Response (superProducts allprods) (Pagination (-1)))) -- to update the local file
   where
     fetchProductsOfCategory :: Text -> ClientM (Set Product)
     fetchProductsOfCategory href = do

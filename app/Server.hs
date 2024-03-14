@@ -6,19 +6,17 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text hiding (drop, head, map, tail)
+import Data.Text hiding (drop, head, map, null, tail)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid
 import Lucid.Htmx (useHtmx)
-import Network.HTTP.Client (Manager)
 import Network.HTTP.Types (hLocation)
 import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName), recipeSuggestions)
 import Servant
-import Servant.Client
-import Servant.Client.Core qualified as Core
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
-import Willys (Promotion)
+import Willys (Promotion, url)
 import Willys qualified
 
 data RootApi as = RootAPI
@@ -88,15 +86,6 @@ newRecipeHandler recipeForm = do
       let ingredients = Set.filter (\p -> p.name `Set.member` unvalidatedIngredients rcpf) products
        in Recipe (rcpf.unvalidatedName) ingredients
 
-runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)
-runClientDefault mgr url action = runClientM action (addUserAgent $ mkClientEnv mgr url)
-
-addUserAgent :: ClientEnv -> ClientEnv
-addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . Core.addHeader "User-Agent" userAgent}
-  where
-    userAgent :: Text
-    userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
-
 data HomePage = HomePage (Set Promotion) (Set Recipe)
 
 instance ToHtml HomePage where
@@ -104,9 +93,11 @@ instance ToHtml HomePage where
     toHtml Navbar
     h1_ "Välkommen till Olas sida"
     h2_ "Veckans recept"
-    mapM_ toHtml $ recipeSuggestions recipes promotions 1
+    ul_ $ do
+      mapM_ (li_ . toHtml) $ recipeSuggestions recipes promotions 1
     h2_ "Veckans erbjudanden"
-    mapM_ toHtml promotions
+    div_ [class_ "promotions-container"] $
+      mapM_ toHtml promotions
 
   toHtmlRaw = toHtml
 
@@ -119,7 +110,7 @@ instance ToHtml RecipePage where
     p_ "Här kan du lägga till och se dina recept som används för att matcha mot veckans erbjudanden på Willys."
     i_ "Tips: om en ingrediens kan bytas ut mot en annan, lägg till båda."
     h2_ "Lägg till recept"
-    toHtml (RecipeFormComponent products)
+    toHtml (RecipeFormComponent products (Just "kyckling"))
     h2_ "Dina recept"
     mapM_ toHtml recipes
 
@@ -156,11 +147,11 @@ instance ToHtml Navbar where
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
 
-data RecipeFormComponent = RecipeFormComponent (Set Willys.SuperProduct)
+data RecipeFormComponent = RecipeFormComponent (Set Willys.SuperProduct) (Maybe Text)
   deriving (Generic, Show)
 
 instance ToHtml RecipeFormComponent where
-  toHtml (RecipeFormComponent ingredients) = do
+  toHtml (RecipeFormComponent products query) = do
     form_ [action_ "/add-recipe", method_ "POST"] $ do
       div_ [class_ "form-group"] $ do
         label_ [for_ "recipe-name"] "Namn:"
@@ -169,9 +160,17 @@ instance ToHtml RecipeFormComponent where
         button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
         label_ [for_ "chosen-product"] "Ingrediens:"
         input_ [placeholder_ "Ange en ingrediens...", id_ "chosen-product", list_ "products", name_ "chosen-product", type_ "text", autocomplete_ "off"]
-        button_ [id_ "add-button", type_ "button", onclick_ "onAddIngredient()"] "Lägg till"
-      datalist_ [id_ "products"] $
-        mapM_ (option_ . toHtml) ingredients
+        button_ [id_ "add-button", type_ "button", onclick_ "showProducts()"] "Visa"
+      div_ [class_ "products"] $
+        case query of
+          Nothing -> return ()
+          Just q ->
+            mapM_
+              ( \sp -> div_ [onclick_ ("addIngredient('" <> sp.name <> "')"), class_ "product-container"] $ do
+                  img_ [class_ "product", src_ ("static/images/products/" <> (Text.replace "/" ":" $ url $ head $ Set.elems sp.imageUrls))]
+                  span_ [class_ "product-name"] $ toHtml sp.name
+              )
+              (Set.filter (\sp -> not $ null (Text.breakOnAll q (Text.toLower sp.name))) products)
       label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
       textarea_ [id_ "recipe-ingredients", name_ "ingredients", rows_ "8", readonly_ "true"] ""
       div_ [class_ "form-group"] $ do

@@ -90,3 +90,5 @@ bench.html
 
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
+
+static/images/products

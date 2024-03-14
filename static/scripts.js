@@ -18,6 +18,19 @@ function onAddIngredient() {
   }
 }
 
+function addIngredient(ingredient) {
+  var list = document.getElementById("recipe-ingredients");
+  if (list) {
+    const ingredients = list.value.split(/\r?\n/);
+    if (!ingredients.includes(ingredient)) {
+      const newList = ingredient + "\n" + list.value;
+      list.value = newList;
+    } else {
+      alert("Ingrediensen är redan tillagd");
+    }
+  }
+}
+
 document
   .getElementById("chosen-product")
   ?.addEventListener("keyup", ({ key }) => {
