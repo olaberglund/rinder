@@ -1,7 +1,8 @@
 module Recipe where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Set (Set, intersection, size, toList)
+import Data.Foldable (fold)
+import Data.Set (Set, intersection, toList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -10,12 +11,12 @@ import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
 import Lucid.Html5
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
-import Willys (Product (..), Promotion)
-import Willys qualified
+import Willys (Promotion, SuperProduct, image, imageUrls, product)
+import Prelude hiding (product)
 
 data Recipe = Recipe
   { name :: !Text,
-    ingredients :: !(Set Product)
+    ingredients :: !(Set SuperProduct)
   }
   deriving (Show, Eq, Ord, Generic)
   deriving anyclass (FromJSON, ToJSON)
@@ -47,5 +48,7 @@ parseIngredients = Set.fromList . Text.splitOn "\r\n"
 -- | at least n ingredients are on promotion
 recipeSuggestions :: Set Recipe -> Set Promotion -> Int -> Set Recipe
 recipeSuggestions recipes promotions n =
-  let nCommonIngredients = ((>= n) . size . (Set.map Willys.product promotions `intersection`) . ingredients)
+  let urlsOfRecipe = fold . Set.map imageUrls . ingredients
+      promotionUrls = Set.map (image . product) promotions
+      nCommonIngredients = (>= n) . Set.size . intersection promotionUrls . urlsOfRecipe
    in Set.filter nCommonIngredients recipes

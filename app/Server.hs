@@ -1,20 +1,16 @@
 module Server where
 
-import App
-import Control.Arrow (left)
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (eitherDecode, encode)
+import Data.Aeson (FromJSON, eitherDecode, eitherDecodeStrict, encode)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import Data.Set (Set, intersection)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text hiding (drop, head, map, tail)
 import GHC.Generics (Generic)
-import Local qualified
 import Lucid
 import Lucid.Htmx (useHtmx)
-import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
-import Network.HTTP.Client.TLS (newTlsManager)
+import Network.HTTP.Client (Manager)
 import Network.HTTP.Types (hLocation)
 import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName), recipeSuggestions)
 import Servant
@@ -35,64 +31,65 @@ data RootApi as = RootAPI
 
 type Api = NamedRoutes RootApi
 
-app :: Env a -> Application
-app = serve (Proxy @Api) . server
+app :: Application
+app = serve (Proxy @Api) server
 
-server :: Env a -> RootApi AsServer
-server env = RootAPI (homePageHandler env) (recipePageHandler env) (serveDirectoryWebApp "static") (newRecipeHandler env)
+server :: RootApi AsServer
+server = RootAPI homePageHandler recipePageHandler (serveDirectoryWebApp "static") newRecipeHandler
 
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
 
-recipePageHandler :: Env a -> Handler RecipePage
-recipePageHandler env = liftIO $ do
-  products <- runClientDefault env.manager env.baseUrl env.fetchProducts
+fetchProducts :: IO (Set Willys.SuperProduct)
+fetchProducts = fetch "products.json"
+
+fetchPromotions :: IO (Set Willys.Promotion)
+fetchPromotions = fetch "promotions.json"
+
+fetch :: (Ord a, FromJSON a) => FilePath -> IO (Set a)
+fetch path = do
+  res <- BS.readFile path
+  case eitherDecodeStrict res of
+    Right (Willys.Response ps _) -> return ps
+    Left err -> liftIO (print err) >> return Set.empty
+
+recipePageHandler :: Handler RecipePage
+recipePageHandler = liftIO $ do
+  products <- fetchProducts
   recipes <- eitherDecode <$> LBS.readFile "recipes.json"
-  case RecipePage <$> left show products <*> recipes of
+  case RecipePage <$> pure products <*> recipes of
     Left err -> putStrLn err >> return (RecipePage mempty mempty)
     Right page -> return page
 
-homePageHandler :: Env a -> Handler HomePage
-homePageHandler env = liftIO $ do
-  promotions <- runClientDefault env.manager env.baseUrl env.fetchPromotions
+homePageHandler :: Handler HomePage
+homePageHandler = liftIO $ do
+  promotions <- fetchPromotions
   recipes <- eitherDecode <$> LBS.readFile "recipes.json"
-  case HomePage <$> left show promotions <*> recipes of
+  case HomePage <$> pure promotions <*> recipes of
     Left err -> putStrLn err >> return (HomePage mempty mempty)
     Right page -> return page
 
-newRecipeHandler :: Env a -> RecipeForm -> Handler NoContent
-newRecipeHandler env recipeForm = do
+newRecipeHandler :: RecipeForm -> Handler NoContent
+newRecipeHandler recipeForm = do
   liftIO $ do
-    products <- runClientDefault env.manager env.baseUrl env.fetchProducts
+    products <- fetchProducts
     oldRecipes <- eitherDecode <$> LBS.readFile "recipes.json"
-    case addRecipe <$> left show products <*> oldRecipes of
+    case addRecipe <$> pure products <*> oldRecipes of
       Left err -> putStrLn err
       Right recipes -> LBS.writeFile "recipes.json" $ encode recipes
 
   redirect "/recept"
   where
-    addRecipe :: Set Willys.Product -> Set Recipe -> Set Recipe
+    addRecipe :: Set Willys.SuperProduct -> Set Recipe -> Set Recipe
     addRecipe products oldRecipes = mkRecipe recipeForm products `Set.insert` oldRecipes
 
-    mkRecipe :: RecipeForm -> Set Willys.Product -> Recipe
+    mkRecipe :: RecipeForm -> Set Willys.SuperProduct -> Recipe
     mkRecipe rcpf products =
       let ingredients = Set.filter (\p -> p.name `Set.member` unvalidatedIngredients rcpf) products
-       in Recipe (rcpf.unvalidatedName) (ingredients `intersection` products)
+       in Recipe (rcpf.unvalidatedName) ingredients
 
 runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)
 runClientDefault mgr url action = runClientM action (addUserAgent $ mkClientEnv mgr url)
-
-productionEnv :: IO (Env Production)
-productionEnv = do
-  mgr <- newTlsManager
-  url <- parseBaseUrl "https://www.willys.se"
-  return $ Env mgr url Willys.fetchProducts Willys.fetchPromotions
-
-localEnv :: IO (Env Local)
-localEnv = do
-  mgr <- newManager defaultManagerSettings
-  url <- parseBaseUrl $ "localhost:" <> show Local.port
-  return $ Env mgr url Local.fetchProducts Local.fetchPromotions
 
 addUserAgent :: ClientEnv -> ClientEnv
 addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . Core.addHeader "User-Agent" userAgent}
@@ -113,7 +110,7 @@ instance ToHtml HomePage where
 
   toHtmlRaw = toHtml
 
-data RecipePage = RecipePage (Set Willys.Product) (Set Recipe)
+data RecipePage = RecipePage (Set Willys.SuperProduct) (Set Recipe)
 
 instance ToHtml RecipePage where
   toHtml (RecipePage products recipes) = baseTemplate $ do
@@ -159,7 +156,7 @@ instance ToHtml Navbar where
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
 
-data RecipeFormComponent = RecipeFormComponent (Set Willys.Product)
+data RecipeFormComponent = RecipeFormComponent (Set Willys.SuperProduct)
   deriving (Generic, Show)
 
 instance ToHtml RecipeFormComponent where

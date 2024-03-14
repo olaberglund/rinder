@@ -130,6 +130,10 @@ instance ToHtml Product where
   toHtml = toHtml . (.name)
   toHtmlRaw = toHtml
 
+instance ToHtml SuperProduct where
+  toHtml = toHtml . (.name)
+  toHtmlRaw = toHtml
+
 data PotentialPromotion = PotentialPromotion
   { promotionPrice :: !Float,
     qualifyingCount :: !(Maybe Int)
