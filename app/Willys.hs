@@ -60,6 +60,18 @@ productHrefs =
     "skafferi"
   ]
 
+-- | Since #(SuperProduct) <= #(Willys.Product),
+-- | this is the only way to get a SuperProduct
+superProducts :: Set Product -> Set SuperProduct
+superProducts products =
+  let nameMap = Set.foldl groupByName Map.empty products
+   in Set.fromList $ map (uncurry SuperProduct) $ Map.toList nameMap
+  where
+    groupByName :: Map.Map Text (Set ImageUrl) -> Product -> Map.Map Text (Set ImageUrl)
+    groupByName acc p = Map.insertWith (<>) p.name (Set.singleton p.image) acc
+
+{- Response -}
+
 type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
@@ -71,6 +83,8 @@ data Response a = Response {results :: Set a, pagination :: Pagination}
 newtype Pagination = Pagination {numberOfPages :: Int}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
+
+{- Promotion -}
 
 data Promotion = Promotion
   { price :: !(Maybe Text),
@@ -91,48 +105,13 @@ instance ToJSON Promotion where
         "potentialPromotions" .= potentialPromotions
       ]
 
-newtype ImageUrl = ImageUrl {url :: Text}
-  deriving (Generic, Show, Ord, Eq)
-  deriving anyclass (FromJSON, ToJSON)
+instance FromJSON Promotion where
+  parseJSON = withObject "Promotion" $ \v -> do
+    productName :: Text <- v .: "name"
+    imageUrl :: Text <- v .: "image" >>= (.: "url")
+    Promotion <$> v .: "price" <*> pure (Product productName (ImageUrl imageUrl)) <*> v .: "potentialPromotions"
 
-data Product = Product {name :: Text, image :: ImageUrl}
-  deriving (Generic, Show)
-  deriving anyclass (FromJSON, ToJSON)
-
--- | Since #(SuperProduct) <= #(Willys.Product),
--- | this is the only way to get a SuperProduct
-superProducts :: Set Willys.Product -> Set SuperProduct
-superProducts products =
-  let nameMap = Set.foldl groupByName Map.empty products
-   in Set.fromList $ map (uncurry SuperProduct) $ Map.toList nameMap
-  where
-    groupByName :: Map.Map Text (Set ImageUrl) -> Willys.Product -> Map.Map Text (Set ImageUrl)
-    groupByName acc p = Map.insertWith (<>) p.name (Set.singleton p.image) acc
-
--- Think of an image url like an id
-data SuperProduct = SuperProduct {name :: Text, imageUrls :: Set ImageUrl}
-  deriving (Generic, Show)
-  deriving anyclass (FromJSON, ToJSON)
-
-instance Eq SuperProduct where
-  (==) = (==) `on` (.name)
-
-instance Ord SuperProduct where
-  compare = comparing (.name)
-
-instance Eq Product where
-  p1 == p2 = p1.image == p2.image
-
-instance Ord Product where
-  compare = comparing image
-
-instance ToHtml Product where
-  toHtml = toHtml . (.name)
-  toHtmlRaw = toHtml
-
-instance ToHtml SuperProduct where
-  toHtml = toHtml . (.name)
-  toHtmlRaw = toHtml
+{- PotentialPromotion -}
 
 data PotentialPromotion = PotentialPromotion
   { promotionPrice :: !Float,
@@ -142,12 +121,6 @@ data PotentialPromotion = PotentialPromotion
 
 instance ToJSON PotentialPromotion where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = \case "promotionPrice" -> "price"; s -> s}
-
-instance FromJSON Promotion where
-  parseJSON = withObject "Promotion" $ \v -> do
-    productName :: Text <- v .: "name"
-    imageUrl :: Text <- v .: "image" >>= (.: "url")
-    Promotion <$> v .: "price" <*> pure (Product productName (ImageUrl imageUrl)) <*> v .: "potentialPromotions"
 
 instance FromJSON PotentialPromotion where
   parseJSON =
@@ -164,3 +137,42 @@ instance ToHtml Promotion where
       toHtml prod
 
   toHtmlRaw = toHtml
+
+{- Product -}
+
+data Product = Product {name :: Text, image :: ImageUrl}
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance Eq Product where
+  p1 == p2 = p1.image == p2.image
+
+instance Ord Product where
+  compare = comparing image
+
+instance ToHtml Product where
+  toHtml = toHtml . (.name)
+  toHtmlRaw = toHtml
+
+{- SuperProduct -}
+
+-- Think of an image url like an id
+data SuperProduct = SuperProduct {name :: Text, imageUrls :: Set ImageUrl}
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance Eq SuperProduct where
+  (==) = (==) `on` (.name)
+
+instance Ord SuperProduct where
+  compare = comparing (.name)
+
+instance ToHtml SuperProduct where
+  toHtml = toHtml . (.name)
+  toHtmlRaw = toHtml
+
+{- ImageUrl -}
+
+newtype ImageUrl = ImageUrl {url :: Text}
+  deriving (Generic, Show, Ord, Eq)
+  deriving anyclass (FromJSON, ToJSON)
