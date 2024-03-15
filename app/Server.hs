@@ -116,10 +116,13 @@ data HomePage = HomePage (Set Promotion) (Set Recipe)
 instance ToHtml HomePage where
   toHtml (HomePage promotions recipes) = baseTemplate $ do
     toHtml Navbar
-    h1_ "Välkommen till Olas sida"
-    h2_ "Veckans recept"
+    h1_ "Rinder - Tinder för recept"
+    h2_ "Matchande recept"
     ul_ $ do
-      mapM_ (li_ . toHtml) $ recipeSuggestions recipes promotions 1
+      let suggestions = recipeSuggestions recipes promotions 1
+      if Set.null suggestions
+        then "Inga matchande recept hittades"
+        else mapM_ (li_ . toHtml) $ suggestions
     h2_ "Veckans erbjudanden"
     div_ [class_ "promotions-container"] $
       mapM_ toHtml promotions
@@ -181,11 +184,12 @@ data ProductList = ProductList (Set Willys.SuperProduct) Text
 
 instance ToHtml ProductList where
   toHtml (ProductList products query) = do
-    div_ [id_ "products"] $
+    fieldset_ [id_ "products"] $ do
+      legend_ "Urval"
       if Text.null query
         then mempty
         else do
-          let filteredProducts = Set.take 30 $ Set.filter (\sp -> not $ null (Text.breakOnAll query (Text.toLower sp.name))) products
+          let filteredProducts = Set.take 30 $ Set.filter (\sp -> not $ null (Text.breakOnAll (Text.toLower query) (Text.toLower sp.name))) products
           mapM_
             ( \sp -> div_ [onclick_ ("addIngredient('" <> sp.name <> "')"), class_ "product-container", title_ sp.name] $ do
                 img_ [class_ "product", src_ ("static/images/products/" <> (Text.replace "/" ":" $ url $ head $ Set.elems sp.imageUrls))]
@@ -204,7 +208,7 @@ instance ToHtml RecipeFormComponent where
       div_ [class_ "form-group"] $ do
         button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
         label_ [for_ "query"] "Ingrediens:"
-        input_ [placeholder_ "Ange en ingrediens...", id_ "query", list_ "products", name_ "query", type_ "text", autocomplete_ "off"]
+        input_ [placeholder_ "Sök efter en ingrediens...", id_ "query", list_ "products", name_ "query", type_ "text", autocomplete_ "off"]
         button_ [id_ "search-button", type_ "button", hxPost_ "/recept/produkter", hxTarget_ "#products", hxSwap_ "outerHTML", hxParams_ "query"] "Visa"
       toHtml (ProductList products "")
       label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
