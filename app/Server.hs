@@ -10,30 +10,50 @@ import Data.Text hiding (drop, head, map, null, tail)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid
-import Lucid.Htmx (useHtmx)
+import Lucid.Htmx (hxInclude_, hxParams_, hxPost_, hxSwap_, hxTarget_, useHtmx)
 import Network.HTTP.Types (hLocation)
 import Recipe (Recipe (Recipe), RecipeForm (unvalidatedIngredients, unvalidatedName), recipeSuggestions)
 import Servant
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
+import Web.FormUrlEncoded (FromForm)
 import Willys (Promotion, url)
 import Willys qualified
 
 data RootApi as = RootAPI
   { homePage :: as :- Get '[HTML] HomePage,
-    recipePage :: as :- "recept" :> Get '[HTML] RecipePage,
     static :: as :- "static" :> Raw,
-    addRecipe :: as :- "add-recipe" :> ReqBody '[FormUrlEncoded] RecipeForm :> PostNoContent
+    recipes :: as :- "recept" :> NamedRoutes RecipeApi
   }
   deriving (Generic)
 
 type Api = NamedRoutes RootApi
 
+newtype Search = Search {query :: Text}
+  deriving (Generic)
+
+instance FromForm Search
+
+data RecipeApi as = RecipeApi
+  { recipePage :: as :- Get '[HTML] RecipePage,
+    addRecipe :: as :- "nytt" :> ReqBody '[FormUrlEncoded] RecipeForm :> PostNoContent,
+    productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductList
+  }
+  deriving (Generic)
+
 app :: Application
 app = serve (Proxy @Api) server
 
 server :: RootApi AsServer
-server = RootAPI homePageHandler recipePageHandler (serveDirectoryWebApp "static") newRecipeHandler
+server =
+  RootAPI
+    homePageHandler
+    (serveDirectoryWebApp "static")
+    ( RecipeApi
+        recipePageHandler
+        newRecipeHandler
+        productListHandler
+    )
 
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
@@ -50,6 +70,11 @@ fetch path = do
   case eitherDecodeStrict res of
     Right (Willys.Response ps _) -> return ps
     Left err -> liftIO (print err) >> return Set.empty
+
+productListHandler :: Search -> Handler ProductList
+productListHandler search = liftIO $ do
+  products <- fetchProducts
+  return $ ProductList products search.query
 
 recipePageHandler :: Handler RecipePage
 recipePageHandler = liftIO $ do
@@ -110,9 +135,10 @@ instance ToHtml RecipePage where
     p_ "Här kan du lägga till och se dina recept som används för att matcha mot veckans erbjudanden på Willys."
     i_ "Tips: om en ingrediens kan bytas ut mot en annan, lägg till båda."
     h2_ "Lägg till recept"
-    toHtml (RecipeFormComponent products (Just "kyckling"))
+    toHtml (RecipeFormComponent products)
     h2_ "Dina recept"
-    mapM_ toHtml recipes
+    ul_ $ do
+      mapM_ (li_ . toHtml) recipes
 
   toHtmlRaw = toHtml
 
@@ -147,30 +173,39 @@ instance ToHtml Navbar where
       navbarHrefs = [("/", "Veckans Erbjudanden"), ("recept", "Mina Recept")]
   toHtmlRaw = toHtml
 
-data RecipeFormComponent = RecipeFormComponent (Set Willys.SuperProduct) (Maybe Text)
+data RecipeFormComponent = RecipeFormComponent (Set Willys.SuperProduct)
   deriving (Generic, Show)
 
+data ProductList = ProductList (Set Willys.SuperProduct) Text
+  deriving (Generic, Show)
+
+instance ToHtml ProductList where
+  toHtml (ProductList products query) = do
+    div_ [id_ "products"] $
+      if Text.null query
+        then mempty
+        else do
+          mapM_
+            ( \sp -> div_ [onclick_ ("addIngredient('" <> sp.name <> "')"), class_ "product-container", title_ sp.name] $ do
+                img_ [class_ "product", src_ ("static/images/products/" <> (Text.replace "/" ":" $ url $ head $ Set.elems sp.imageUrls))]
+                span_ [class_ "product-name"] $ toHtml sp.name
+            )
+            (Set.filter (\sp -> not $ null (Text.breakOnAll query (Text.toLower sp.name))) products)
+
+  toHtmlRaw = toHtml
+
 instance ToHtml RecipeFormComponent where
-  toHtml (RecipeFormComponent products query) = do
-    form_ [action_ "/add-recipe", method_ "POST"] $ do
+  toHtml (RecipeFormComponent products) = do
+    form_ [action_ "/recept/nytt", method_ "POST"] $ do
       div_ [class_ "form-group"] $ do
         label_ [for_ "recipe-name"] "Namn:"
         input_ [placeholder_ "Pelles Pitepalt", id_ "recipe-name", name_ "name", type_ "text"]
       div_ [class_ "form-group"] $ do
         button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
-        label_ [for_ "chosen-product"] "Ingrediens:"
-        input_ [placeholder_ "Ange en ingrediens...", id_ "chosen-product", list_ "products", name_ "chosen-product", type_ "text", autocomplete_ "off"]
-        button_ [id_ "add-button", type_ "button", onclick_ "showProducts()"] "Visa"
-      div_ [class_ "products"] $
-        case query of
-          Nothing -> return ()
-          Just q ->
-            mapM_
-              ( \sp -> div_ [onclick_ ("addIngredient('" <> sp.name <> "')"), class_ "product-container"] $ do
-                  img_ [class_ "product", src_ ("static/images/products/" <> (Text.replace "/" ":" $ url $ head $ Set.elems sp.imageUrls))]
-                  span_ [class_ "product-name"] $ toHtml sp.name
-              )
-              (Set.filter (\sp -> not $ null (Text.breakOnAll q (Text.toLower sp.name))) products)
+        label_ [for_ "query"] "Ingrediens:"
+        input_ [placeholder_ "Ange en ingrediens...", id_ "query", list_ "products", name_ "query", type_ "text", autocomplete_ "off"]
+        button_ [id_ "search-button", type_ "button", hxPost_ "/recept/produkter", hxTarget_ "#products", hxSwap_ "outerHTML", hxParams_ "query"] "Visa"
+      toHtml (ProductList products "")
       label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
       textarea_ [id_ "recipe-ingredients", name_ "ingredients", rows_ "8", readonly_ "true"] ""
       div_ [class_ "form-group"] $ do
