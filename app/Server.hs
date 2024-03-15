@@ -185,12 +185,13 @@ instance ToHtml ProductList where
       if Text.null query
         then mempty
         else do
+          let filteredProducts = Set.take 30 $ Set.filter (\sp -> not $ null (Text.breakOnAll query (Text.toLower sp.name))) products
           mapM_
             ( \sp -> div_ [onclick_ ("addIngredient('" <> sp.name <> "')"), class_ "product-container", title_ sp.name] $ do
                 img_ [class_ "product", src_ ("static/images/products/" <> (Text.replace "/" ":" $ url $ head $ Set.elems sp.imageUrls))]
                 span_ [class_ "product-name"] $ toHtml sp.name
             )
-            (Set.filter (\sp -> not $ null (Text.breakOnAll query (Text.toLower sp.name))) products)
+            filteredProducts
 
   toHtmlRaw = toHtml
 
