@@ -1,21 +1,12 @@
 module Willys where
 
-import Control.Concurrent.Async (mapConcurrently)
-import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
-import Data.ByteString.Lazy qualified as BS
-import Data.ByteString.Lazy qualified as LBS
-import Data.Foldable (fold)
 import Data.Function (on)
-import Data.Map qualified as Map
 import Data.Ord (comparing)
-import Data.Set (Set, union, unions)
-import Data.Set qualified as Set
+import Data.Set (Set)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid
-import Network.HTTP.Client (Manager, httpLbs, parseRequest, responseBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
 import Servant.Client hiding (Response)
@@ -26,12 +17,15 @@ type WillysAPI = NamedRoutes WillysRootAPI
 
 data WillysRootAPI as = WillysRootAPI
   { getPromotions :: as :- "search" :> "campaigns" :> "offline" :> QueryParam "q" Int :> QueryParam "type" Text :> QueryParam "size" Int :> Get '[JSON] PromotionResponse,
-    getProducts :: as :- "c" :> Capture "category" Text :> QueryParam "size" Int :> QueryParam "page" Int :> Get '[JSON] ProductResponse
+    searchProducts :: as :- "search" :> "clean" :> QueryParam "q" Text :> QueryParam "size" Int :> Get '[JSON] ProductResponse
   }
   deriving (Generic)
 
-runClientDefault :: Manager -> BaseUrl -> ClientM a -> IO (Either ClientError a)
-runClientDefault mgr url action = runClientM action (addUserAgent $ mkClientEnv mgr url)
+runClientDefault :: ClientM a -> IO (Either ClientError a)
+runClientDefault action = do
+  mgr <- newTlsManager
+  baseUrl <- parseBaseUrl "willys.se"
+  runClientM action (addUserAgent $ mkClientEnv mgr baseUrl)
 
 addUserAgent :: ClientEnv -> ClientEnv
 addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . Core.addHeader "User-Agent" userAgent}
@@ -43,86 +37,10 @@ apiClient :: WillysRootAPI (AsClientT ClientM)
 apiClient = client (Proxy @WillysAPI)
 
 fetchPromotions :: ClientM (Set Promotion)
-fetchPromotions = do
-  promotions <- (apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000)
-  _ <- liftIO $ BS.writeFile "promotions.json" (encode promotions) -- to update the local file
-  return $ results promotions
+fetchPromotions = results <$> (apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000)
 
-fetchProducts :: IO (Either ClientError (Set Product))
-fetchProducts = do
-  mgr <- newTlsManager
-  url <- parseBaseUrl "https://www.willys.se"
-  allCalls <- fetchProducts'
-  runClientDefault mgr url (collect allCalls)
-  where
-    fetchProductsOfCategory :: Text -> ClientM (Set Product)
-    fetchProductsOfCategory href = do
-      (Response res (Pagination tot)) <- fetchProductsOnPage href 0
-      remainingCalls <- liftIO $ mapConcurrently (return . fetchProductsOnPage href) [1 .. tot - 1]
-      remRes <- sequence remainingCalls
-      return $ res `union` (unions $ results <$> remRes)
-
-    fetchProductsOnPage :: Text -> Int -> ClientM (Response Product)
-    fetchProductsOnPage href page = apiClient // getProducts /: href /: Just 100 /: Just page
-
-    fetchProducts' :: IO [ClientM (Set Product)]
-    fetchProducts' = mapConcurrently (return . fetchProductsOfCategory) productHrefs
-
-    collect = fmap unions . sequence
-
-downloadImages :: Set SuperProduct -> IO ()
-downloadImages products = mapM_ download (Set.map url $ fold $ Set.map imageUrls products)
-  where
-    download :: Text -> IO ()
-    download url = do
-      mgr <- newTlsManager
-      req <- parseRequest (Text.unpack url)
-      img <- Network.HTTP.Client.responseBody <$> httpLbs req mgr
-      LBS.writeFile ("static/images/products/" <> (Text.unpack $ Text.replace "/" ":" url)) img
-      return ()
-
-updateProducts :: IO ()
-updateProducts = do
-  mgr <- newTlsManager
-  url <- parseBaseUrl "https://www.willys.se"
-  prods <- mapConcurrently (return . fetchProductsOfCategory) productHrefs
-  res <- runClientDefault mgr url $ unions <$> sequence prods
-  case res of
-    Left e -> print e
-    Right allprods ->
-      BS.writeFile "products.json" (encode (Response (superProducts allprods) (Pagination (-1)))) -- to update the local file
-  where
-    fetchProductsOfCategory :: Text -> ClientM (Set Product)
-    fetchProductsOfCategory href = do
-      (Response res (Pagination tot)) <- fetchProductsOnPage href 0
-      remainingCalls <- liftIO $ mapConcurrently (return . fetchProductsOnPage href) [1 .. tot - 1]
-      remRes <- sequence remainingCalls
-      return $ res `union` (unions $ results <$> remRes)
-
-    fetchProductsOnPage :: Text -> Int -> ClientM (Response Product)
-    fetchProductsOnPage href page = apiClient // getProducts /: href /: Just 100 /: Just page
-
-productHrefs :: [Text]
-productHrefs =
-  [ "kott-chark-och-fagel",
-    "frukt-och-gront",
-    "mejeri-ost-och-agg",
-    "fryst",
-    "fisk-och-skaldjur",
-    "skafferi"
-  ]
-
--- | Since #(SuperProduct) <= #(Willys.Product),
--- | this is the only way to get a SuperProduct
-superProducts :: Set Product -> Set SuperProduct
-superProducts products =
-  let nameMap = Set.foldl groupByName Map.empty products
-   in Set.fromList $ map (uncurry SuperProduct) $ Map.toList nameMap
-  where
-    groupByName :: Map.Map Text (Set ImageUrl) -> Product -> Map.Map Text (Set ImageUrl)
-    groupByName acc p = Map.insertWith (<>) p.name (Set.singleton p.image) acc
-
-{- Response -}
+fetchProducts :: Text -> ClientM (Set Product)
+fetchProducts q = results <$> (apiClient // searchProducts /: Just q /: Just 80)
 
 type ProductResponse = Response Product
 
@@ -138,53 +56,25 @@ newtype Pagination = Pagination {numberOfPages :: Int}
 
 {- Promotion -}
 
-data Promotion = Promotion
-  { price :: !(Maybe Text),
-    product :: !Product,
-    potentialPromotions :: ![PotentialPromotion]
-  }
+data Promotion = Promotion {product :: !Product}
   deriving (Generic, Show, Ord)
 
 instance Eq Promotion where
   (==) = (==) `on` product
 
 instance ToJSON Promotion where
-  toJSON (Promotion price product potentialPromotions) =
+  toJSON (Promotion product) =
     object
-      [ "price" .= price,
-        "name" .= product.name, -- TODO: Find semigroup instance (toJSON product <> ... )
-        "image" .= product.image,
-        "potentialPromotions" .= potentialPromotions
-      ]
+      ["name" .= product.name, "image" .= product.image]
 
 instance FromJSON Promotion where
   parseJSON = withObject "Promotion" $ \v -> do
     productName :: Text <- v .: "name"
     imageUrl :: Text <- v .: "image" >>= (.: "url")
-    Promotion <$> v .: "price" <*> pure (Product productName (ImageUrl imageUrl)) <*> v .: "potentialPromotions"
-
-{- PotentialPromotion -}
-
-data PotentialPromotion = PotentialPromotion
-  { promotionPrice :: !Float,
-    qualifyingCount :: !(Maybe Int)
-  }
-  deriving (Generic, Show, Ord, Eq)
-
-instance ToJSON PotentialPromotion where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = \case "promotionPrice" -> "price"; s -> s}
-
-instance FromJSON PotentialPromotion where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "promotionPrice" -> "price"
-            s -> s
-        }
+    return $ Promotion (Product productName (ImageUrl imageUrl))
 
 instance ToHtml Promotion where
-  toHtml (Promotion _price prod _potentialPromotions) = do
+  toHtml (Promotion prod) = do
     div_ [classes_ ["flex, space-x-2"]] $ do
       toHtml prod
 
@@ -192,7 +82,10 @@ instance ToHtml Promotion where
 
 {- Product -}
 
-data Product = Product {name :: Text, image :: ImageUrl}
+data Product = Product
+  { name :: Text,
+    image :: ImageUrl
+  }
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -203,23 +96,6 @@ instance Ord Product where
   compare = comparing image
 
 instance ToHtml Product where
-  toHtml = toHtml . (.name)
-  toHtmlRaw = toHtml
-
-{- SuperProduct -}
-
--- Think of an image url like an id
-data SuperProduct = SuperProduct {name :: Text, imageUrls :: Set ImageUrl}
-  deriving (Generic, Show)
-  deriving anyclass (FromJSON, ToJSON)
-
-instance Eq SuperProduct where
-  (==) = (==) `on` (.name)
-
-instance Ord SuperProduct where
-  compare = comparing (.name)
-
-instance ToHtml SuperProduct where
   toHtml = toHtml . (.name)
   toHtmlRaw = toHtml
 

@@ -1,51 +1,42 @@
 module Recipe where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Foldable (fold)
-import Data.Set (Set, intersection, toList)
+import Data.Set (Set, intersection)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
-import Willys (Promotion, SuperProduct, image, imageUrls, product)
+import Web.Internal.FormUrlEncoded (parseAll)
+import Willys (ImageUrl (ImageUrl), Product (Product), Promotion, image, product)
 import Prelude hiding (product)
 
 data Recipe = Recipe
   { name :: !Text,
-    ingredients :: !(Set SuperProduct)
+    ingredients :: ![Product]
   }
   deriving (Show, Eq, Ord, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-data RecipeForm = RecipeForm
-  { unvalidatedName :: !Text,
-    unvalidatedIngredients :: !(Set Text)
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance FromForm RecipeForm where
-  fromForm form =
-    RecipeForm
-      <$> parseUnique "name" form
-      <*> (parseIngredients <$> parseUnique "ingredients" form)
+instance FromForm Recipe where
+  fromForm form = do
+    nm <- parseUnique "name" form
+    products :: [Text] <- parseAll "ingredients" form
+    urls :: [Text] <- parseAll "urls" form
+    return $ Recipe nm (zipWith Product products (map ImageUrl urls))
 
 instance ToHtml Recipe where
   toHtml (Recipe name _ingredients) = toHtml name
 
   toHtmlRaw = toHtml
 
-parseIngredients :: Text -> Set Text
-parseIngredients = Set.fromList . Text.splitOn "\r\n"
-
 -- | Given a set of recipes and promotions,
 -- | calculate a list of recipes where
 -- | at least n ingredients are on promotion
 recipeSuggestions :: Set Recipe -> Set Promotion -> Int -> Set Recipe
 recipeSuggestions recipes promotions n =
-  let urlsOfRecipe = fold . Set.map imageUrls . ingredients
+  let urlsOfRecipe = map image . ingredients
       promotionUrls = Set.map (image . product) promotions
-      nCommonIngredients = (>= n) . Set.size . intersection promotionUrls . urlsOfRecipe
+      nCommonIngredients = (>= n) . Set.size . intersection promotionUrls . Set.fromList . urlsOfRecipe
    in Set.filter nCommonIngredients recipes

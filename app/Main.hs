@@ -5,4 +5,4 @@ import Server (app)
 import Prelude hiding (putStrLn, readFile, writeFile)
 
 main :: IO ()
-main = run 1234 app
+main = run 8080 app
