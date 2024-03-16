@@ -3,7 +3,6 @@ module Willys where
 import Data.Aeson
 import Data.Function (on)
 import Data.Ord (comparing)
-import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Lucid
@@ -36,17 +35,17 @@ addUserAgent env = env {makeClientRequest = \b -> defaultMakeClientRequest b . C
 apiClient :: WillysRootAPI (AsClientT ClientM)
 apiClient = client (Proxy @WillysAPI)
 
-fetchPromotions :: ClientM (Set Promotion)
+fetchPromotions :: ClientM [Promotion]
 fetchPromotions = results <$> (apiClient // getPromotions /: Just 2176 /: Just "PERSONAL_GENERAL" /: Just 2000)
 
-fetchProducts :: Text -> ClientM (Set Product)
+fetchProducts :: Text -> ClientM [Product]
 fetchProducts q = results <$> (apiClient // searchProducts /: Just q /: Just 80)
 
 type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
 
-data Response a = Response {results :: Set a, pagination :: Pagination}
+data Response a = Response {results :: [a], pagination :: Pagination}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 

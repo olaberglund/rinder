@@ -20,8 +20,9 @@ body {
 
 nav ul {
   display: flex;
-  justify-content: center;
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 nav ul li {
@@ -95,8 +96,7 @@ input {
 }
 
 .product {
-  width: 100px;
-  height: 100px;
+  width: 100%;
 }
 
 .product-container {
@@ -110,4 +110,61 @@ input {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+}
+
+#promotions {
+  display: flex;
+  height: 820px;
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 10px;
+  overflow-y: auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  border: 1px solid #fff;
+}
+
+#shopping-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #fff;
+  min-height: 300px;
+}
+
+.shopping-item {
+  display: flex;
+  padding: 20px;
+  border-bottom: 1px dashed #fff;
+  gap: 20px;
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: start;
+}
+
+.item-image {
+  width: 100px;
+  height: 100px;
+}
+
+.item-checkbox {
+  width: 20px;
+  height: 20px;
+}
+
+.product-name {
+  font-size: 20px;
+}
+
+.shopping-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.remove-checked-button {
+  align-self: flex-end;
 }

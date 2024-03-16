@@ -28,8 +28,6 @@ function addIngredient(ingredient, url) {
   }
 }
 
-// input_ [type_ "hidden", name_ "ingredients", id_ "recipe-urls"]
-
 document.getElementById("query")?.addEventListener("keyup", ({ key }) => {
   if (key === "Enter") {
     document.getElementById("search-button")?.click();
@@ -38,4 +36,20 @@ document.getElementById("query")?.addEventListener("keyup", ({ key }) => {
 
 function onResetList() {
   document.getElementById("recipe-form").reset();
+}
+
+function toggleItem(inputId) {
+  const input = document.getElementById(inputId);
+  input.checked = !input.checked;
+}
+
+function onDeleteCheckedItems() {
+  const form = document.getElementById("shopping-list");
+  const checkedItems = Array.from(
+    form.querySelectorAll("input[type=checkbox]")
+  ).filter((input) => input.checked);
+  checkedItems.forEach((input) => {
+    const item = document.getElementById("shopping-item-" + input.value);
+    item.remove();
+  });
 }
