@@ -1,22 +1,25 @@
 module Server where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (FromJSON, eitherDecode, eitherDecodeStrict, encode)
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, eitherDecodeStrict, encode)
+import Data.Aeson.KeyMap (fromList)
+import Data.Aeson.Text (encodeToLazyText)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text hiding (drop, head, map, null, replicate, tail)
-import Data.Text qualified as Text hiding (replicate)
+import Data.Text.Lazy qualified as TL
 import GHC.Generics (Generic)
 import Lucid
-import Lucid.Htmx (hxParams_, hxPost_, hxSwap_, hxTarget_, useHtmx)
+import Lucid.Htmx (hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx)
 import Network.HTTP.Types (hLocation)
 import Recipe (Recipe)
 import Servant
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
 import Web.FormUrlEncoded (FromForm)
-import Willys (ImageUrl (ImageUrl), Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
+import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
 import Willys qualified
+import Prelude hiding (product)
 
 data RootApi as = RootAPI
   { homePage :: as :- Get '[HTML] HomePage,
@@ -33,7 +36,8 @@ instance FromForm Search
 
 data ShoppingApi as = ShoppingApi
   { shoppingPage :: as :- Get '[HTML] ShoppingPage,
-    productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList
+    productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList,
+    addProduct :: as :- "lista" :> ReqBody '[FormUrlEncoded] Willys.Product :> Post '[HTML] ShoppingList
   }
   deriving (Generic)
 
@@ -58,31 +62,41 @@ server =
         (productListHandler (\p -> [onclick_ $ "addIngredient(" <> params p <> ")"]))
     )
     ( ShoppingApi
-        (pure $ ShoppingPage [])
-        (productListHandler (\p -> []))
+        shoppingPageHandler
+        (productListHandler (\p -> [hxPost_ "/inkop/lista", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxVals_ (encodeToText [("name", p.name), ("url", p.image.url)])]))
+        addProductHandler
     )
+  where
+    encodeToText = TL.toStrict . encodeToLazyText . fromList
+
+shoppingPageHandler :: Handler ShoppingPage
+shoppingPageHandler = liftIO $ do
+  products <- eitherDecode <$> LBS.readFile "shopping-list.json"
+  case products of
+    Left err -> putStrLn err >> return (ShoppingPage [] [])
+    Right (ShoppingList ps) -> return (ShoppingPage [] ps)
+
+addProductHandler :: Willys.Product -> Handler ShoppingList
+addProductHandler product = liftIO $ do
+  res <- BS.readFile "shopping-list.json"
+  case eitherDecodeStrict res of
+    Right ps -> LBS.writeFile "shopping-list.json" (encode $ ShoppingList (product : ps)) >> return (ShoppingList (product : ps))
+    Left err -> print err >> return (ShoppingList [])
 
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
-
-fetch :: (Ord a, FromJSON a) => FilePath -> IO [a]
-fetch path = do
-  res <- BS.readFile path
-  case eitherDecodeStrict res of
-    Right (Willys.Response ps _) -> return ps
-    Left err -> liftIO (print err) >> return []
 
 productListHandler :: (Willys.Product -> [Attribute]) -> Search -> Handler ProductSearchList
 productListHandler attributes search = liftIO $ do
   res <- runClientDefault (fetchProducts search.query)
   case res of
-    Left err -> print err >> return (ProductSearchList (const []) [] "Urval")
+    Left err -> print err >> return (ProductSearchList mempty mempty "Urval")
     Right products -> return $ ProductSearchList attributes products "Urval"
 
 recipePageHandler :: Handler RecipePage
 recipePageHandler = liftIO $ do
   recipes <- eitherDecode <$> LBS.readFile "recipes.json"
-  case RecipePage <$> pure mempty <*> recipes of
+  case RecipePage <$> pure toBeReplaced <*> recipes of
     Left err -> putStrLn err >> return (RecipePage mempty mempty)
     Right page -> return page
 
@@ -113,7 +127,7 @@ newRecipeHandler recipe = do
 data HomePage = HomePage [Promotion] [Recipe]
 
 instance ToHtml HomePage where
-  toHtml (HomePage promotions recipes) = baseTemplate $ do
+  toHtml (HomePage promotions _recipes) = baseTemplate $ do
     h1_ "Rinder - Tinder för recept"
     h2_ "Matchande recept"
     -- ul_ $ do
@@ -174,18 +188,19 @@ data ProductSearchList = ProductSearchList (Willys.Product -> [Attribute]) [Will
   deriving (Generic)
 
 instance ToHtml ProductSearchList where
-  toHtml (ProductSearchList attributes products rubric) = do
-    fieldset_ [id_ "products"] $ do
-      legend_ (toHtml rubric)
-      mapM_
-        ( \p -> div_ ([class_ "product-container", title_ p.name] <> (attributes p)) $ do
-            img_ [class_ "product", src_ p.image.url]
-            span_ [class_ "product-name"] $ toHtml p.name
-        )
-        products
-    where
-
+  toHtml (ProductSearchList attributes products rubric) = productSearchList_ attributes products rubric
   toHtmlRaw = toHtml
+
+productSearchList_ :: (Monad m) => (Willys.Product -> [Attribute]) -> [Willys.Product] -> Text -> HtmlT m ()
+productSearchList_ attributes products rubric = do
+  fieldset_ [id_ "products"] $ do
+    legend_ (toHtml rubric)
+    mapM_
+      ( \p -> div_ ([class_ "product-container", title_ p.name] <> (attributes p)) $ do
+          img_ [class_ "product", src_ p.image.url]
+          span_ [class_ "product-name"] $ toHtml p.name
+      )
+      products
 
 recipeForm_ :: (Monad m) => [Willys.Product] -> HtmlT m ()
 recipeForm_ products = do
@@ -193,33 +208,42 @@ recipeForm_ products = do
     div_ [class_ "form-group"] $ do
       label_ [for_ "recipe-name"] "Namn:"
       input_ [placeholder_ "Pelles Pitepalt", id_ "recipe-name", name_ "name", type_ "text"]
-    productSearch_ (const []) products
+    productSearch_ toBeReplaced "/recept/produkter" products
     label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
     textarea_ [id_ "recipe-ingredients", name_ "ingredients-show", rows_ "8", readonly_ "true"] ""
     div_ [class_ "form-group"] $ do
       button_ [type_ "button", onclick_ "onResetList()"] "Återställ"
       button_ [type_ "submit", onclick_ "onSubmit"] "Spara"
 
-data ShoppingPage = ShoppingPage ![Willys.Product]
+shoppingPage_ :: (Monad m) => [Willys.Product] -> [Willys.Product] -> HtmlT m ()
+shoppingPage_ products shoppingList = baseTemplate $ do
+  h1_ "Veckans inköpslista"
+  p_ "Sök och lägg till produkter till din inköpslista."
+  form_ $
+    productSearch_ toBeReplaced "/inkop/produkter" products
+  div_ [class_ "shopping-list-title"] $ do
+    h2_ "Din inköpslista"
+    button_ [class_ "remove-checked-button", type_ "button", onclick_ "onDeleteCheckedItems()"] "Ta bort markerade"
+  shoppingList_ shoppingList
+
+data ShoppingPage = ShoppingPage ![Willys.Product] ![Willys.Product]
 
 instance ToHtml ShoppingPage where
-  toHtml (ShoppingPage products) = baseTemplate $ do
-    main_ [class_ "shopping-page"] $ do
-      h1_ "Veckans inköpslista"
-      span_ "Sök och lägg till produkter till din inköpslista."
-      form_ $
-        productSearch_ (const []) products
-      h2_ "Din inköpslista"
-      button_ [class_ "remove-checked-button", type_ "button", onclick_ "onDeleteCheckedItems()"] "Ta bort markerade"
-      shoppingList_ []
+  toHtml (ShoppingPage products list) = shoppingPage_ products list
 
   toHtmlRaw = toHtml
 
 shoppingList_ :: (Monad m) => [Willys.Product] -> HtmlT m ()
 shoppingList_ products = div_ [id_ "shopping-list"] $ do
-  mapM_ shoppingItem_ exampleProducts
-  where
-    exampleProducts = map (\(i, p) -> p {Willys.name = p.name <> (Text.pack $ show i)}) $ Prelude.zip [1 ..] $ replicate 10 (Willys.Product "Kyckling" (ImageUrl "https://assets.axfood.se/image/upload/f_auto,t_200/07340083488467_C1N1_s02"))
+  mapM_ shoppingItem_ products
+
+data ShoppingList = ShoppingList ![Willys.Product]
+  deriving (Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance ToHtml ShoppingList where
+  toHtml (ShoppingList products) = shoppingList_ products
+  toHtmlRaw = toHtml
 
 shoppingItem_ :: (Monad m) => Willys.Product -> HtmlT m ()
 shoppingItem_ product = div_ [class_ "shopping-item", id_ ("shopping-item-" <> product.name), onclick_ ("toggleItem('" <> product.name <> "')")] $ do
@@ -229,16 +253,19 @@ shoppingItem_ product = div_ [class_ "shopping-item", id_ ("shopping-item-" <> p
     span_ [class_ "item-quantity"] $ "Mängd: 10"
     input_ [class_ "item-checkbox", type_ "checkbox", id_ product.name, name_ product.name]
 
-productSearch_ :: (Monad m) => (Willys.Product -> [Attribute]) -> [Willys.Product] -> HtmlT m ()
-productSearch_ attributes products = do
+productSearch_ :: (Monad m) => (Willys.Product -> [Attribute]) -> Text -> [Willys.Product] -> HtmlT m ()
+productSearch_ attributes posturl products = do
   div_ [class_ "form-group"] $ do
     button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
     label_ [for_ "query"] "Produkt:"
     input_ [placeholder_ "Sök efter en produkt...", id_ "query", list_ "products", name_ "query", type_ "text", autocomplete_ "off"]
-    button_ [id_ "search-button", type_ "button", hxPost_ "/recept/produkter", hxTarget_ "#products", hxSwap_ "outerHTML", hxParams_ "query"] "Visa"
+    button_ [id_ "search-button", type_ "button", hxPost_ posturl, hxTarget_ "#products", hxSwap_ "outerHTML", hxParams_ "query"] "Visa"
   toHtml (ProductSearchList attributes products "Urval")
 
 data OnClick a = OnClick (a -> Text)
 
 params :: Willys.Product -> Text
 params p = "'" <> p.name <> "', '" <> p.image.url <> "'"
+
+toBeReplaced :: (Monoid m) => m
+toBeReplaced = mempty
