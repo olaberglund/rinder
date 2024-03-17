@@ -40,12 +40,6 @@ nav ul li a {
   }
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 form ul {
   height: 300px;
   overflow-y: auto;
@@ -83,7 +77,13 @@ input {
   overflow-y: auto;
 }
 
-#products {
+.gapped-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.products {
   display: flex;
   height: 320px;
   align-items: start;
@@ -93,23 +93,19 @@ input {
   flex-wrap: wrap;
   align-content: flex-start;
   border: 1px solid #fff;
+  min-width: 0;
 }
 
 .product {
-  width: 100%;
+  cursor: pointer;
+  min-width: 0;
 }
 
 .product-container {
   display: flex;
-  width: 100px;
+  width: calc(25% - 10px);
   flex-direction: column;
   gap: 10px;
-}
-
-.product-name {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
 #promotions {
@@ -127,8 +123,9 @@ input {
 #shopping-list {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   border: 1px solid #fff;
-  min-height: 300px;
+  min-height: 140px;
 }
 
 .shopping-item {
@@ -137,22 +134,43 @@ input {
   border-bottom: 1px dashed #fff;
   gap: 20px;
 }
+.shopping-item:last-child {
+  border-bottom: none;
+}
+
+.shopping-list-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.remove-checked-button {
+  font-family: fonten, sans-serif;
+}
+
+.product-name {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.item-details-text {
+  display: flex;
+  flex-direction: column;
+}
 
 .item-details {
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
-  align-items: start;
+  justify-content: space-between;
+  flex: 1;
+  overflow: hidden;
 }
 
 .item-image {
   width: 100px;
   height: 100px;
-}
-
-.item-checkbox {
-  width: 20px;
-  height: 20px;
 }
 
 .product-name {
@@ -169,4 +187,10 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.item-checkbox {
+  align-self: flex-end;
+  width: 30px;
+  height: 30px;
 }

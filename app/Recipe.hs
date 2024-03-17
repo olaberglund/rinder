@@ -8,8 +8,7 @@ import GHC.Generics (Generic)
 import Lucid (ToHtml)
 import Lucid.Base (ToHtml (toHtml, toHtmlRaw))
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
-import Web.Internal.FormUrlEncoded (parseAll)
-import Willys (ImageUrl (ImageUrl), Product (Product), Promotion, image, product)
+import Willys (Product, Promotion, image, product)
 import Prelude hiding (product)
 
 data Recipe = Recipe
@@ -22,9 +21,8 @@ data Recipe = Recipe
 instance FromForm Recipe where
   fromForm form = do
     nm <- parseUnique "name" form
-    products :: [Text] <- parseAll "ingredients" form
-    urls :: [Text] <- parseAll "urls" form
-    return $ Recipe nm (zipWith Product products (map ImageUrl urls))
+    products :: [Product] <- fromForm form
+    return $ Recipe nm products
 
 instance ToHtml Recipe where
   toHtml (Recipe name _ingredients) = toHtml name

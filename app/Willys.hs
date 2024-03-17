@@ -10,7 +10,7 @@ import Network.HTTP.Client.TLS (newTlsManager)
 import Servant
 import Servant.Client hiding (Response)
 import Servant.Client.Core qualified as Core
-import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
+import Web.FormUrlEncoded (FromForm, fromForm, parseAll, parseUnique)
 import Prelude hiding (product)
 
 type WillysAPI = NamedRoutes WillysRootAPI
@@ -102,17 +102,14 @@ instance ToHtml Product where
 instance FromForm Product where
   fromForm form = Product <$> (parseUnique "name" form) <*> (ImageUrl <$> parseUnique "url" form)
 
+instance FromForm [Product] where
+  fromForm form = do
+    names <- parseAll "names" form
+    urls <- parseAll "urls" form
+    return $ zipWith Product names (map ImageUrl urls)
+
 {- ImageUrl -}
 
 newtype ImageUrl = ImageUrl {url :: Text}
   deriving (Generic, Show, Ord, Eq)
-  deriving anyclass (FromJSON, ToJSON)
-
-{- Flattened Product -}
-
-data FlattenedProduct = FlattenedProduct
-  { name :: Text,
-    imgUrl :: Text
-  }
-  deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)

@@ -20,7 +20,7 @@ function addIngredient(ingredient, url) {
 
     const ingredientInput = document.createElement("input");
     ingredientInput.type = "hidden";
-    ingredientInput.name = "ingredients";
+    ingredientInput.name = "names";
     ingredientInput.value = ingredient;
 
     document.getElementById("recipe-form").appendChild(urlInput);
@@ -38,18 +38,10 @@ function onResetList() {
   document.getElementById("recipe-form").reset();
 }
 
-function toggleItem(inputId) {
-  const input = document.getElementById(inputId);
-  input.checked = !input.checked;
-}
-
-function onDeleteCheckedItems() {
-  const form = document.getElementById("shopping-list");
-  const checkedItems = Array.from(
-    form.querySelectorAll("input[type=checkbox]")
-  ).filter((input) => input.checked);
-  checkedItems.forEach((input) => {
-    const item = document.getElementById("shopping-item-" + input.value);
-    item.remove();
-  });
+function toggleHidden(checkbox) {
+  if (checkbox.checked) {
+    document.getElementById("checkbox-url-" + checkbox.value).checked = true;
+  } else {
+    document.getElementById("checkbox-url-" + checkbox.value).checked = false;
+  }
 }
