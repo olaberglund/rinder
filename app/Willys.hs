@@ -1,9 +1,11 @@
 module Willys where
 
 import Data.Aeson
+import Data.Char (isNumber)
 import Data.Function (on)
 import Data.Ord (comparing)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Lucid
 import Network.HTTP.Client.TLS (newTlsManager)
@@ -82,6 +84,9 @@ instance ToHtml Promotion where
 
 {- Product -}
 
+getId :: Product -> Text
+getId p = Text.filter (/= ' ') p.name <> Text.filter isNumber p.image.url
+
 data Product = Product
   { name :: Text,
     image :: ImageUrl
@@ -90,7 +95,7 @@ data Product = Product
   deriving anyclass (FromJSON, ToJSON)
 
 instance Eq Product where
-  p1 == p2 = p1.image == p2.image
+  (==) = (==) `on` getId
 
 instance Ord Product where
   compare = comparing image

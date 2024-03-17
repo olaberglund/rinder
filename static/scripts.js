@@ -40,8 +40,8 @@ function onResetList() {
 
 function toggleHidden(checkbox) {
   if (checkbox.checked) {
-    document.getElementById("checkbox-url-" + checkbox.value).checked = true;
+    document.getElementById("checkbox-url-" + checkbox.id).checked = true;
   } else {
-    document.getElementById("checkbox-url-" + checkbox.value).checked = false;
+    document.getElementById("checkbox-url-" + checkbox.id).checked = false;
   }
 }

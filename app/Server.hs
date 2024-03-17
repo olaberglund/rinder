@@ -278,14 +278,14 @@ instance ToHtml ShoppingList where
   toHtmlRaw = toHtml
 
 shoppingItem_ :: (Monad m) => Willys.Product -> HtmlT m ()
-shoppingItem_ product = div_ [class_ "shopping-item", id_ ("shopping-item-" <> product.name)] $ do
+shoppingItem_ product = div_ [class_ "shopping-item", id_ ("shopping-item-" <> Willys.getId product)] $ do
   img_ [class_ "item-image", src_ product.image.url]
   div_ [class_ "item-details"] $ do
     div_ [class_ "item-details-text"] $ do
       span_ [class_ "product-name"] $ toHtml product.name
       span_ [class_ "item-quantity"] $ ""
-    input_ [class_ "item-checkbox", type_ "checkbox", id_ ("checkbox-" <> product.name), name_ "names", value_ product.name, onchange_ "toggleHidden(this)"]
-    input_ [hidden_ "", type_ "checkbox", id_ ("checkbox-url-" <> product.name), name_ "urls", value_ product.image.url]
+    input_ [class_ "item-checkbox", type_ "checkbox", id_ (Willys.getId product), name_ "names", value_ product.name, onchange_ "toggleHidden(this)"]
+    input_ [hidden_ "", type_ "checkbox", id_ ("checkbox-url-" <> Willys.getId product), name_ "urls", value_ product.image.url]
 
 productSearch_ :: (Monad m) => (Willys.Product -> [Attribute]) -> Text -> [Willys.Product] -> HtmlT m ()
 productSearch_ attributes posturl products = do
