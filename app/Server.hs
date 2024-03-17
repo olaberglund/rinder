@@ -2,7 +2,7 @@ module Server where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON, eitherDecode, eitherDecodeStrict, encode)
-import Data.Aeson.KeyMap (Key, fromList)
+import Data.Aeson.KeyMap (Key, KeyMap, fromList)
 import Data.Aeson.Text (encodeToLazyText)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
@@ -11,13 +11,13 @@ import Data.Text hiding (drop, filter, head, map, null, replicate, tail)
 import Data.Text.Lazy qualified as TL
 import GHC.Generics (Generic)
 import Lucid
-import Lucid.Htmx (hxDelete_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx)
+import Lucid.Htmx (hxDelete_, hxExt_, hxInclude_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
 import Network.HTTP.Types (hLocation)
 import Recipe (Recipe)
 import Servant
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
-import Web.FormUrlEncoded (FromForm (fromForm))
+import Web.FormUrlEncoded (FromForm)
 import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
 import Willys qualified
 import Prelude hiding (product)
@@ -39,17 +39,13 @@ instance FromForm Search
 newtype Products = Products {products :: [Willys.Product]}
   deriving (Generic)
 
-newtype MarkedProducts = MarkedProducts {markedProducts :: [Willys.Product]}
-  deriving (Generic)
-
-instance FromForm MarkedProducts where
-  fromForm form = MarkedProducts <$> fromForm form
-
 data ShoppingApi as = ShoppingApi
   { shoppingPage :: as :- Get '[HTML] ShoppingPage,
     productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList,
-    addProduct :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] Willys.Product :> Post '[HTML] ShoppingList,
-    removeProducts :: as :- "ta-bort" :> ReqBody '[FormUrlEncoded] MarkedProducts :> Delete '[HTML] ShoppingList
+    addProduct :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] Willys.Product :> Post '[HTML] [ShoppingItem],
+    toggleProduct :: as :- "toggla" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
+    removeChecked :: as :- "ta-bort" :> Delete '[HTML] [ShoppingItem],
+    removeAll :: as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem]
   }
   deriving (Generic)
 
@@ -78,36 +74,55 @@ server =
         shoppingPageHandler
         (productListHandler addToShoppingList)
         addProductHandler
-        removeProductsHandler
+        toggleProductHandler
+        removeCheckedHandler
+        removeAllHandler
     )
 
-encodeToText :: [(Key, Text)] -> StrictText
+encodeToText :: (ToJSON v) => [(Key, v)] -> Text
 encodeToText = TL.toStrict . encodeToLazyText . fromList
 
-removeProductsHandler :: MarkedProducts -> Handler ShoppingList
-removeProductsHandler (MarkedProducts products) = liftIO $ do
-  oldList <- eitherDecode <$> LBS.readFile "shopping-list.json"
-  case oldList of
-    Left err -> print err >> return (ShoppingList [])
-    Right (ShoppingList ps) -> do
-      let newList = filter (`notElem` products) ps
-      LBS.writeFile "shopping-list.json" (encode $ ShoppingList newList)
-      return (ShoppingList newList)
+toggle :: Checkbox -> Checkbox
+toggle Checked = Unchecked
+toggle Unchecked = Checked
+
+removeAllHandler :: Handler [ShoppingItem]
+removeAllHandler = liftIO $ LBS.writeFile "shopping-list.json" "[]" >> return []
+
+removeCheckedHandler :: Handler [ShoppingItem]
+removeCheckedHandler = liftIO $ do
+  res <- BS.readFile "shopping-list.json"
+  case eitherDecodeStrict res of
+    Right ps ->
+      let newItems = filter (\i -> i.check == Unchecked) ps
+       in LBS.writeFile "shopping-list.json" (encode newItems) >> return newItems
+    Left err -> print err >> return []
+
+toggleProductHandler :: Willys.Product -> Handler [ShoppingItem]
+toggleProductHandler product = liftIO $ do
+  res <- BS.readFile "shopping-list.json"
+  case eitherDecodeStrict res of
+    Right ps ->
+      let newItems = map (\i -> if i.product == product then i {check = toggle i.check} else i) ps
+       in LBS.writeFile "shopping-list.json" (encode newItems) >> return newItems
+    Left err -> print err >> return []
 
 shoppingPageHandler :: Handler ShoppingPage
 shoppingPageHandler = liftIO $ do
   fetchedPromotions <- runClientDefault fetchPromotions
-  products <- eitherDecode <$> LBS.readFile "shopping-list.json"
-  case products of
+  shoppingItems <- eitherDecode <$> LBS.readFile "shopping-list.json"
+  case shoppingItems of
     Left err -> putStrLn err >> return (ShoppingPage [] [] Nothing)
     Right list -> return (ShoppingPage [] (fromRight [] fetchedPromotions) (Just list))
 
-addProductHandler :: Willys.Product -> Handler ShoppingList
+addProductHandler :: Willys.Product -> Handler [ShoppingItem]
 addProductHandler product = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
-    Right ps -> LBS.writeFile "shopping-list.json" (encode $ ShoppingList (product : ps)) >> return (ShoppingList (product : ps))
-    Left err -> print err >> return (ShoppingList [])
+    Right ps ->
+      let newItem = ShoppingItem product Unchecked
+       in LBS.writeFile "shopping-list.json" (encode $ newItem : ps) >> return (newItem : ps)
+    Left err -> print err >> return []
 
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
@@ -192,6 +207,7 @@ baseTemplate content = do
   html_ $ do
     head_ $ do
       useHtmx
+      useHtmxExtension "json-enc"
       link_ [rel_ "stylesheet", href_ ("static/styles.css")]
       link_ [rel_ "icon", type_ "image/png", href_ "static/images/favicon.ico"]
       meta_ [charset_ "utf-8"]
@@ -240,16 +256,17 @@ recipeForm_ products = do
       button_ [type_ "button", onclick_ "onResetList()"] "Återställ"
       button_ [type_ "submit", onclick_ "onSubmit"] "Spara"
 
-shoppingPage_ :: (Monad m) => [Willys.Product] -> [Promotion] -> Maybe ShoppingList -> HtmlT m ()
+shoppingPage_ :: (Monad m) => [Willys.Product] -> [Promotion] -> Maybe [ShoppingItem] -> HtmlT m ()
 shoppingPage_ products promotions shoppingList = baseTemplate $ do
   h1_ "Veckans inköpslista"
   p_ "Sök och lägg till produkter till din inköpslista."
   form_ [class_ "gapped-form"] $
     productSearch_ toBeReplaced "/inkop/produkter" products
   toHtml $ ProductSearchList addToShoppingList (map (.product) promotions) "Erbjudanden" "promotion-products"
-  form_ [class_ "shopping-list"] $ do
+  div_ [class_ "shopping-list"] $ do
     div_ [class_ "shopping-list-title"] $ do
       h2_ "Din inköpslista"
+      button_ [class_ "remove-all-button", type_ "button", hxDelete_ "/inkop/ta-bort-alla", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort alla"
       button_ [class_ "remove-checked-button", type_ "button", hxDelete_ "/inkop/ta-bort", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort markerade"
     case shoppingList of
       Nothing -> p_ "Något gick fel..."
@@ -258,34 +275,52 @@ shoppingPage_ products promotions shoppingList = baseTemplate $ do
 addToShoppingList :: Willys.Product -> [Attribute]
 addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxVals_ (encodeToText [("name", p.name), ("url", p.image.url)])]
 
-data ShoppingPage = ShoppingPage ![Willys.Product] ![Promotion] !(Maybe ShoppingList)
+data ShoppingPage = ShoppingPage ![Willys.Product] ![Promotion] !(Maybe [ShoppingItem])
 
 instance ToHtml ShoppingPage where
   toHtml (ShoppingPage products promotions list) = shoppingPage_ products promotions list
 
   toHtmlRaw = toHtml
 
-shoppingList_ :: (Monad m) => ShoppingList -> HtmlT m ()
-shoppingList_ (ShoppingList products) = div_ [id_ "shopping-list"] $ do
-  mapM_ shoppingItem_ products
+shoppingList_ :: (Monad m) => [ShoppingItem] -> HtmlT m ()
+shoppingList_ items = div_ [id_ "shopping-list"] $ do
+  mapM_ shoppingItem_ items
 
-data ShoppingList = ShoppingList ![Willys.Product]
-  deriving (Generic)
+data Checkbox = Checked | Unchecked
+  deriving (Generic, Eq, Show)
   deriving anyclass (FromJSON, ToJSON)
 
-instance ToHtml ShoppingList where
+data ShoppingItem = ShoppingItem {product :: Willys.Product, check :: Checkbox}
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance ToHtml [ShoppingItem] where
   toHtml shoppingList = shoppingList_ shoppingList
   toHtmlRaw = toHtml
 
-shoppingItem_ :: (Monad m) => Willys.Product -> HtmlT m ()
-shoppingItem_ product = div_ [class_ "shopping-item", id_ ("shopping-item-" <> Willys.getId product)] $ do
-  img_ [class_ "item-image", src_ product.image.url]
+shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
+shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
+  img_ [class_ "item-image", src_ item.product.image.url]
   div_ [class_ "item-details"] $ do
     div_ [class_ "item-details-text"] $ do
-      span_ [class_ "product-name"] $ toHtml product.name
+      span_ [class_ "product-name"] $ toHtml item.product.name
       span_ [class_ "item-quantity"] $ ""
-    input_ [class_ "item-checkbox", type_ "checkbox", id_ (Willys.getId product), name_ "names", value_ product.name, onchange_ "toggleHidden(this)"]
-    input_ [hidden_ "", type_ "checkbox", id_ ("checkbox-url-" <> Willys.getId product), name_ "urls", value_ product.image.url]
+    input_ $
+      [ class_ "item-checkbox",
+        type_ "checkbox",
+        id_ $ Willys.getId item.product,
+        name_ "name",
+        value_ item.product.name,
+        hxPost_ "/inkop/toggla",
+        hxTarget_ "#shopping-list",
+        hxExt_ "json-enc",
+        hxVals_ (TL.toStrict $ encodeToLazyText item.product),
+        hxSwap_ "outerHTML",
+        autocomplete_ "off"
+      ]
+        <> if item.check == Checked then [checked_] else []
+  where
+    divId = "shopping-item-" <> Willys.getId item.product
 
 productSearch_ :: (Monad m) => (Willys.Product -> [Attribute]) -> Text -> [Willys.Product] -> HtmlT m ()
 productSearch_ attributes posturl products = do
