@@ -4,10 +4,13 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON, eitherDecode, eitherDecodeStrict, encode)
 import Data.Aeson.KeyMap (Key, KeyMap, fromList)
 import Data.Aeson.Text (encodeToLazyText)
+import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either (fromRight)
+import Data.Maybe (fromMaybe)
 import Data.Text hiding (drop, filter, head, map, null, replicate, tail)
+import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as TL
 import GHC.Generics (Generic)
 import Lucid
@@ -42,7 +45,7 @@ newtype Products = Products {products :: [Willys.Product]}
 data ShoppingApi as = ShoppingApi
   { shoppingPage :: as :- Get '[HTML] ShoppingPage,
     productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList,
-    addProduct :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] Willys.Product :> Post '[HTML] [ShoppingItem],
+    addProduct :: as :- "lagg-till" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
     toggleProduct :: as :- "toggla" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
     removeChecked :: as :- "ta-bort" :> Delete '[HTML] [ShoppingItem],
     removeAll :: as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem]
@@ -131,8 +134,8 @@ productListHandler :: (Willys.Product -> [Attribute]) -> Search -> Handler Produ
 productListHandler attributes search = liftIO $ do
   res <- runClientDefault (fetchProducts search.query)
   case res of
-    Left err -> print err >> return (ProductSearchList mempty mempty "Urval" "searched-products")
-    Right products -> return $ ProductSearchList attributes products "Urval" "searched-products"
+    Left err -> print err >> return (ProductSearchList mempty mempty "Sökresultat" "searched-products")
+    Right products -> return $ ProductSearchList attributes products "Sökresultat" "searched-products"
 
 recipePageHandler :: Handler RecipePage
 recipePageHandler = liftIO $ do
@@ -239,7 +242,10 @@ productSearchList_ attributes products rubric listId = do
     mapM_
       ( \p -> div_ ([class_ "product-container", title_ p.name] <> (attributes p)) $ do
           img_ [class_ "product", src_ p.image.url]
-          span_ [class_ "product-name"] $ toHtml p.name
+          div_ [class_ "product-details"] $ do
+            span_ [class_ "product-name"] $ toHtml p.name
+            span_ [class_ "product-promo"] $ toHtml $ Willys.getPrice p
+            span_ [class_ "product-save"] $ toHtml $ fromMaybe "" $ Willys.getSavePrice p
       )
       products
 
@@ -273,7 +279,7 @@ shoppingPage_ products promotions shoppingList = baseTemplate $ do
       Just list -> toHtml list
 
 addToShoppingList :: Willys.Product -> [Attribute]
-addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxVals_ (encodeToText [("name", p.name), ("url", p.image.url)])]
+addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxExt_ "json-enc", hxVals_ (Text.decodeUtf8 $ toStrict $ encode p)]
 
 data ShoppingPage = ShoppingPage ![Willys.Product] ![Promotion] !(Maybe [ShoppingItem])
 
@@ -304,7 +310,8 @@ shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
   div_ [class_ "item-details"] $ do
     div_ [class_ "item-details-text"] $ do
       span_ [class_ "product-name"] $ toHtml item.product.name
-      span_ [class_ "item-quantity"] $ ""
+      span_ [class_ "item-price"] $ toHtml $ Willys.getPrice item.product
+      span_ [class_ "item-save"] $ toHtml $ fromMaybe "" $ Willys.getSavePrice item.product
     input_ $
       [ class_ "item-checkbox",
         type_ "checkbox",

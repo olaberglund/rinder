@@ -97,15 +97,26 @@ input {
 }
 
 .product {
-  cursor: pointer;
   min-width: 0;
+  width: 100px;
+  outline: 1px solid #000;
 }
 
 .product-container {
+  cursor: pointer;
   display: flex;
-  width: calc(25% - 10px);
+  width: calc(50% - 4px);
+  outline: 1px solid #fff;
+  color: black;
+  background-color: #fff;
+}
+
+.product-details {
+  display: flex;
   flex-direction: column;
-  gap: 10px;
+  flex: 1;
+  padding-left: 10px;
+  overflow: hidden;
 }
 
 #promotions {
@@ -153,6 +164,8 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .item-details-text {
@@ -162,7 +175,6 @@ input {
 
 .item-details {
   display: flex;
-  flex-direction: column;
   justify-content: space-between;
   flex: 1;
   overflow: hidden;
@@ -171,10 +183,6 @@ input {
 .item-image {
   width: 100px;
   height: 100px;
-}
-
-.product-name {
-  font-size: 20px;
 }
 
 .shopping-page {
