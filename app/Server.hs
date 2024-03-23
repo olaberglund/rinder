@@ -1,9 +1,11 @@
 module Server where
 
+import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON, eitherDecode, eitherDecodeStrict, encode)
-import Data.Aeson.KeyMap (Key, KeyMap, fromList)
+import Data.Aeson.KeyMap (Key, fromList)
 import Data.Aeson.Text (encodeToLazyText)
+import Data.Binary.Builder (fromByteString, fromLazyByteString)
 import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
@@ -14,23 +16,29 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as TL
 import GHC.Generics (Generic)
 import Lucid
-import Lucid.Htmx (hxDelete_, hxExt_, hxInclude_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
+import Lucid.Base (makeAttribute)
+import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
 import Network.HTTP.Types (hLocation)
+import Network.Wai.EventSource (ServerEvent (..))
+import Network.Wai.Middleware.Cors (simpleCors)
 import Recipe (Recipe)
 import Servant
+import Servant.API.EventStream (EventSource, EventStream)
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
+import Servant.Types.SourceT qualified as S
+import System.Timeout (timeout)
 import Web.FormUrlEncoded (FromForm)
 import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
 import Willys qualified
 import Prelude hiding (product)
 
 data RootApi as = RootAPI
-  { homePage :: as :- Get '[HTML] NoContent,
-    promotionsPage :: as :- "erbjudanden" :> Get '[HTML] PromotionsPage,
-    static :: as :- "static" :> Raw,
-    recipes :: as :- "recept" :> NamedRoutes RecipeApi,
-    shopping :: as :- "inkop" :> NamedRoutes ShoppingApi
+  { homePageEP :: as :- Get '[HTML] NoContent,
+    promotionsPageEP :: as :- "erbjudanden" :> Get '[HTML] PromotionsPage,
+    staticEP :: as :- "static" :> Raw,
+    recipesEP :: as :- "recept" :> NamedRoutes RecipeApi,
+    shoppingEP :: as :- "inkop" :> NamedRoutes ShoppingApi
   }
   deriving (Generic)
 
@@ -42,45 +50,72 @@ instance FromForm Search
 newtype Products = Products {products :: [Willys.Product]}
   deriving (Generic)
 
+type SessionId = Int
+
+data Env = Env {broadcastChan :: Chan ServerEvent}
+
+newEnv :: IO Env
+newEnv = Env <$> newChan
+
 data ShoppingApi as = ShoppingApi
-  { shoppingPage :: as :- Get '[HTML] ShoppingPage,
-    productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList,
-    addProduct :: as :- "lagg-till" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
-    toggleProduct :: as :- "toggla" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
-    removeChecked :: as :- "ta-bort" :> Delete '[HTML] [ShoppingItem],
-    removeAll :: as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem]
+  { shoppingPageEP :: as :- Get '[HTML] ShoppingPage,
+    productListEP :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList,
+    addProductEP :: as :- "lagg-till" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] [ShoppingItem],
+    toggleProductEP :: as :- "toggla" :> ReqBody '[JSON] Willys.Product :> Post '[HTML] NoContent,
+    removeCheckedEP :: as :- "ta-bort" :> Delete '[HTML] [ShoppingItem],
+    removeAllEP :: as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem],
+    sseEP :: as :- "sse" :> StreamGet NoFraming EventStream EventSource
   }
   deriving (Generic)
 
 data RecipeApi as = RecipeApi
-  { recipePage :: as :- Get '[HTML] RecipePage,
-    addRecipe :: as :- "nytt" :> ReqBody '[FormUrlEncoded] Recipe :> PostNoContent,
-    productList :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList
+  { recipePageEP :: as :- Get '[HTML] RecipePage,
+    addRecipeEP :: as :- "nytt" :> ReqBody '[FormUrlEncoded] Recipe :> PostNoContent,
+    productListEP :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList
   }
   deriving (Generic)
 
-app :: Application
-app = serve (Proxy @(NamedRoutes RootApi)) server
+app :: Env -> Application
+app = simpleCors . serve (Proxy @(NamedRoutes RootApi)) . server
 
-server :: RootApi AsServer
-server =
+server :: Env -> RootApi AsServer
+server env =
   RootAPI
-    (redirect "/inkop")
-    promotionsPageHandler
-    (serveDirectoryWebApp "static")
-    ( RecipeApi
-        recipePageHandler
-        newRecipeHandler
-        (productListHandler (\p -> [onclick_ $ "addIngredient(" <> params p <> ")"]))
-    )
-    ( ShoppingApi
-        shoppingPageHandler
-        (productListHandler addToShoppingList)
-        addProductHandler
-        toggleProductHandler
-        removeCheckedHandler
-        removeAllHandler
-    )
+    { homePageEP = redirect "/inkop",
+      promotionsPageEP = promotionsPageH,
+      staticEP = serveDirectoryWebApp "static",
+      recipesEP =
+        RecipeApi
+          { recipePageEP = recipePageH,
+            addRecipeEP = newRecipeH,
+            productListEP = productListH (\p -> [onclick_ $ "addIngredient(" <> params p <> ")"])
+          },
+      shoppingEP =
+        ShoppingApi
+          { shoppingPageEP = shoppingPageH,
+            productListEP = productListH addToShoppingList,
+            addProductEP = addProductH,
+            toggleProductEP = toggleProductH env,
+            removeCheckedEP = removeCheckedH,
+            removeAllEP = removeAllH,
+            sseEP = sseH env
+          }
+    }
+
+sseH :: Env -> Handler EventSource
+sseH env = liftIO $ do
+  chan <- dupChan env.broadcastChan
+  return $ S.fromStepT (S.Yield keepAlive (rest chan))
+  where
+    rest :: Chan ServerEvent -> S.StepT IO ServerEvent
+    rest chan = S.Effect $ do
+      msg <- timeout (15 * 1000000) (readChan chan)
+      return $ case msg of
+        Just m -> S.Yield m (rest chan)
+        Nothing -> S.Yield keepAlive (rest chan)
+
+    keepAlive :: ServerEvent
+    keepAlive = CommentEvent (fromByteString "keep-alive")
 
 encodeToText :: (ToJSON v) => [(Key, v)] -> Text
 encodeToText = TL.toStrict . encodeToLazyText . fromList
@@ -89,11 +124,11 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllHandler :: Handler [ShoppingItem]
-removeAllHandler = liftIO $ LBS.writeFile "shopping-list.json" "[]" >> return []
+removeAllH :: Handler [ShoppingItem]
+removeAllH = liftIO $ LBS.writeFile "shopping-list.json" "[]" >> return []
 
-removeCheckedHandler :: Handler [ShoppingItem]
-removeCheckedHandler = liftIO $ do
+removeCheckedH :: Handler [ShoppingItem]
+removeCheckedH = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
     Right ps ->
@@ -101,25 +136,27 @@ removeCheckedHandler = liftIO $ do
        in LBS.writeFile "shopping-list.json" (encode newItems) >> return newItems
     Left err -> print err >> return []
 
-toggleProductHandler :: Willys.Product -> Handler [ShoppingItem]
-toggleProductHandler product = liftIO $ do
+toggleProductH :: Env -> Willys.Product -> Handler NoContent
+toggleProductH env product = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
     Right ps ->
       let newItems = map (\i -> if i.product == product then i {check = toggle i.check} else i) ps
-       in LBS.writeFile "shopping-list.json" (encode newItems) >> return newItems
-    Left err -> print err >> return []
+       in LBS.writeFile "shopping-list.json" (encode newItems)
+            >> writeChan env.broadcastChan (ServerEvent Nothing Nothing (map (fromLazyByteString . renderBS . toHtml) newItems))
+            >> return NoContent
+    Left err -> print err >> return NoContent
 
-shoppingPageHandler :: Handler ShoppingPage
-shoppingPageHandler = liftIO $ do
+shoppingPageH :: Handler ShoppingPage
+shoppingPageH = liftIO $ do
   fetchedPromotions <- runClientDefault fetchPromotions
   shoppingItems <- eitherDecode <$> LBS.readFile "shopping-list.json"
   case shoppingItems of
     Left err -> putStrLn err >> return (ShoppingPage [] [] Nothing)
     Right list -> return (ShoppingPage [] (fromRight [] fetchedPromotions) (Just list))
 
-addProductHandler :: Willys.Product -> Handler [ShoppingItem]
-addProductHandler product = liftIO $ do
+addProductH :: Willys.Product -> Handler [ShoppingItem]
+addProductH product = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
     Right ps ->
@@ -130,22 +167,22 @@ addProductHandler product = liftIO $ do
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
 
-productListHandler :: (Willys.Product -> [Attribute]) -> Search -> Handler ProductSearchList
-productListHandler attributes search = liftIO $ do
+productListH :: (Willys.Product -> [Attribute]) -> Search -> Handler ProductSearchList
+productListH attributes search = liftIO $ do
   res <- runClientDefault (fetchProducts search.query)
   case res of
     Left err -> print err >> return (ProductSearchList mempty mempty "Sökresultat" "searched-products")
     Right products -> return $ ProductSearchList attributes products "Sökresultat" "searched-products"
 
-recipePageHandler :: Handler RecipePage
-recipePageHandler = liftIO $ do
+recipePageH :: Handler RecipePage
+recipePageH = liftIO $ do
   recipes <- eitherDecode <$> LBS.readFile "recipes.json"
   case RecipePage <$> pure toBeReplaced <*> recipes of
     Left err -> putStrLn err >> return (RecipePage mempty mempty)
     Right page -> return page
 
-promotionsPageHandler :: Handler PromotionsPage
-promotionsPageHandler = liftIO $ do
+promotionsPageH :: Handler PromotionsPage
+promotionsPageH = liftIO $ do
   fetchedPromotions <- runClientDefault fetchPromotions
   recipes <- eitherDecode <$> LBS.readFile "recipes.json"
   case fetchedPromotions of
@@ -155,8 +192,8 @@ promotionsPageHandler = liftIO $ do
         Left err -> putStrLn err >> return (PromotionsPage mempty mempty)
         Right page -> return page
 
-newRecipeHandler :: Recipe -> Handler NoContent
-newRecipeHandler recipe = do
+newRecipeH :: Recipe -> Handler NoContent
+newRecipeH recipe = do
   liftIO $ do
     oldRecipes <- eitherDecode <$> LBS.readFile "recipes.json"
     case addRecipe <$> oldRecipes of
@@ -211,6 +248,7 @@ baseTemplate content = do
     head_ $ do
       useHtmx
       useHtmxExtension "json-enc"
+      useHtmxExtension "sse"
       link_ [rel_ "stylesheet", href_ ("static/styles.css")]
       link_ [rel_ "icon", type_ "image/png", href_ "static/images/favicon.ico"]
       meta_ [charset_ "utf-8"]
@@ -289,7 +327,7 @@ instance ToHtml ShoppingPage where
   toHtmlRaw = toHtml
 
 shoppingList_ :: (Monad m) => [ShoppingItem] -> HtmlT m ()
-shoppingList_ items = div_ [id_ "shopping-list"] $ do
+shoppingList_ items = div_ [id_ "shopping-list", hxExt_ "sse", hxSseConnect_ "/inkop/sse", hxSseSwap_ "message"] $ do
   mapM_ shoppingItem_ items
 
 data Checkbox = Checked | Unchecked
@@ -299,6 +337,10 @@ data Checkbox = Checked | Unchecked
 data ShoppingItem = ShoppingItem {product :: Willys.Product, check :: Checkbox}
   deriving (Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
+
+instance ToHtml ShoppingItem where
+  toHtml item = shoppingItem_ item
+  toHtmlRaw = toHtml
 
 instance ToHtml [ShoppingItem] where
   toHtml shoppingList = shoppingList_ shoppingList
@@ -319,10 +361,10 @@ shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
         name_ "name",
         value_ item.product.name,
         hxPost_ "/inkop/toggla",
-        hxTarget_ "#shopping-list",
+        -- hxTarget_ "#shopping-list",
         hxExt_ "json-enc",
         hxVals_ (TL.toStrict $ encodeToLazyText item.product),
-        hxSwap_ "outerHTML",
+        -- hxSwap_ "outerHTML",
         autocomplete_ "off"
       ]
         <> if item.check == Checked then [checked_] else []
@@ -347,3 +389,9 @@ params p = "'" <> p.name <> "', '" <> p.image.url <> "'"
 
 toBeReplaced :: (Monoid m) => m
 toBeReplaced = mempty
+
+hxSseConnect_ :: Text -> Attribute
+hxSseConnect_ = makeAttribute "sse-connect"
+
+hxSseSwap_ :: Text -> Attribute
+hxSseSwap_ = makeAttribute "sse-swap"

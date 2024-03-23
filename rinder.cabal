@@ -96,8 +96,15 @@ executable rinder
                       http-client-tls,
                       transformers,
                       http-api-data,
-                      http-types
-
+                      http-types,
+                      wai-extra,
+                      stm,
+                      binary,
+                      wai,
+                      http-media,
+                      servant-event-stream,
+                      servant,
+                      wai-cors
 
     ghc-options: -threaded 
 
