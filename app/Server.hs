@@ -315,13 +315,19 @@ shoppingPage_ products promotions shoppingList = baseTemplate $ do
     productSearch_ toBeReplaced "/inkop/produkter" products
   toHtml $ ProductSearchList addToShoppingList (map (.product) promotions) "Erbjudanden" "promotion-products"
   div_ [class_ "shopping-list"] $ do
-    div_ [class_ "shopping-list-title"] $ do
-      h2_ "Din inköpslista"
+    h2_ "Din inköpslista"
+    div_ [class_ "shopping-list-buttons"] $ do
       button_ [class_ "remove-all-button", type_ "button", hxDelete_ "/inkop/ta-bort-alla", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort alla"
       button_ [class_ "remove-checked-button", type_ "button", hxDelete_ "/inkop/ta-bort", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort markerade"
     case shoppingList of
       Nothing -> p_ "Något gick fel..."
       Just list -> toHtml list
+  button_
+    [ class_ "scroll-to-bottom",
+      type_ "button",
+      onclick_ "document.querySelector('.shopping-list').scrollIntoView({behavior: 'smooth'});"
+    ]
+    "Till listan"
 
 addToShoppingList :: Willys.Product -> [Attribute]
 addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxExt_ "json-enc", hxVals_ (Text.decodeUtf8 $ toStrict $ encode p)]
