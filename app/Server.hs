@@ -94,9 +94,9 @@ server env =
         ShoppingApi
           { shoppingPageEP = shoppingPageH,
             productListEP = productListH addToShoppingList,
-            addProductEP = addProductH,
+            addProductEP = addProductH env,
             toggleProductEP = toggleProductH env,
-            removeCheckedEP = removeCheckedH,
+            removeCheckedEP = removeCheckedH env,
             removeAllEP = removeAllH,
             sseEP = sseH env
           }
@@ -127,13 +127,13 @@ toggle Unchecked = Checked
 removeAllH :: Handler [ShoppingItem]
 removeAllH = liftIO $ LBS.writeFile "shopping-list.json" "[]" >> return []
 
-removeCheckedH :: Handler [ShoppingItem]
-removeCheckedH = liftIO $ do
+removeCheckedH :: Env -> Handler [ShoppingItem]
+removeCheckedH env = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
     Right ps ->
       let newItems = filter (\i -> i.check == Unchecked) ps
-       in LBS.writeFile "shopping-list.json" (encode newItems) >> return newItems
+       in updateAndBroadCast env newItems
     Left err -> print err >> return []
 
 toggleProductH :: Env -> Willys.Product -> Handler NoContent
@@ -142,30 +142,37 @@ toggleProductH env product = liftIO $ do
   case eitherDecodeStrict res of
     Right ps ->
       let newItems = map (\i -> if i.product == product then i {check = toggle i.check} else i) ps
-       in LBS.writeFile "shopping-list.json" (encode newItems)
-            >> writeChan env.broadcastChan (ServerEvent Nothing Nothing (map (fromLazyByteString . renderBS . toHtml) newItems))
-            >> return NoContent
+       in updateAndBroadCast env newItems >> return NoContent
     Left err -> print err >> return NoContent
+
+asServerEvent :: (ToHtml a) => [a] -> ServerEvent
+asServerEvent = ServerEvent Nothing Nothing . map (fromLazyByteString . renderBS . toHtml)
 
 shoppingPageH :: Handler ShoppingPage
 shoppingPageH = liftIO $ do
   fetchedPromotions <- runClientDefault fetchPromotions
   shoppingItems <- eitherDecode <$> LBS.readFile "shopping-list.json"
   case shoppingItems of
-    Left err -> putStrLn err >> return (ShoppingPage [] [] Nothing)
-    Right list -> return (ShoppingPage [] (fromRight [] fetchedPromotions) (Just list))
+    Left err -> putStrLn err >> return (ShoppingPage mempty mempty mempty)
+    Right list -> return (ShoppingPage mempty (fromRight mempty fetchedPromotions) (Just list))
 
-addProductH :: Willys.Product -> Handler [ShoppingItem]
-addProductH product = liftIO $ do
+addProductH :: Env -> Willys.Product -> Handler [ShoppingItem]
+addProductH env product = liftIO $ do
   res <- BS.readFile "shopping-list.json"
   case eitherDecodeStrict res of
     Right ps ->
-      let newItem = ShoppingItem product Unchecked
-       in LBS.writeFile "shopping-list.json" (encode $ newItem : ps) >> return (newItem : ps)
+      let newList = ShoppingItem product Unchecked : ps
+       in updateAndBroadCast env newList
     Left err -> print err >> return []
 
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
+
+updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
+updateAndBroadCast env items =
+  LBS.writeFile "shopping-list.json" (encode items)
+    >> writeChan (broadcastChan env) (asServerEvent items)
+    >> return items
 
 productListH :: (Willys.Product -> [Attribute]) -> Search -> Handler ProductSearchList
 productListH attributes search = liftIO $ do
@@ -357,14 +364,12 @@ shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
     input_ $
       [ class_ "item-checkbox",
         type_ "checkbox",
-        id_ $ Willys.getId item.product,
+        id_ (Willys.getId item.product),
         name_ "name",
         value_ item.product.name,
         hxPost_ "/inkop/toggla",
-        -- hxTarget_ "#shopping-list",
         hxExt_ "json-enc",
         hxVals_ (TL.toStrict $ encodeToLazyText item.product),
-        -- hxSwap_ "outerHTML",
         autocomplete_ "off"
       ]
         <> if item.check == Checked then [checked_] else []
