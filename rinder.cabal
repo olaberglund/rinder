@@ -58,7 +58,7 @@ executable rinder
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: Willys, Recipe, Server
+    other-modules: Willys, Server, Splitvajs
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -94,17 +94,14 @@ executable rinder
                       lucid-htmx,
                       http-client,
                       http-client-tls,
-                      transformers,
                       http-api-data,
                       http-types,
                       wai-extra,
-                      stm,
                       binary,
-                      wai,
-                      http-media,
                       servant-event-stream,
                       servant,
-                      wai-cors
+                      time,
+                      heap
 
     ghc-options: -threaded 
 

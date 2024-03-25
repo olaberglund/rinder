@@ -18,7 +18,7 @@ body {
   padding: 0 10px;
 }
 
-nav ul {
+ul {
   display: flex;
   list-style: none;
   padding: 0;
@@ -53,11 +53,20 @@ button {
 
 .form-group {
   display: flex;
+  flex: 1;
   gap: 20px;
+  min-width: 0;
 }
 
 .form-group input {
   flex: 1;
+  min-width: 0;
+}
+
+.radio-form-group {
+  display: flex;
+  flex: 1;
+  justify-content: space-around;
 }
 
 textarea {
@@ -222,4 +231,79 @@ input {
   right: 20px;
   padding: 10px;
   cursor: pointer;
+}
+
+.expense-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  width: 100%;
+  align-items: center;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #fff;
+  box-sizing: border-box;
+  border-bottom: 1px dashed #fff;
+}
+
+.expense-title {
+  margin: 0;
+}
+
+.expense-info-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.split-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pie-chart {
+  border: 1px solid #fff;
+}
+
+.paid-by {
+  padding: 0 2px 0 2px;
+}
+
+.expenses-container {
+  border: 1px solid #fff;
+  width: 100%;
+}
+
+.expense-container:last-child {
+  border-bottom: none;
+}
+
+input[type="radio"] {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+}
+
+.radio-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 10px;
+}
+
+.tally {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  border: 1px solid #fff;
+}
+
+.tally span {
+  flex: 1;
+}
+
+.tally-info {
+  text-align: center;
+}
+.tally-amount {
+  text-align: end;
 }

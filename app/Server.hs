@@ -10,9 +10,12 @@ import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either (fromRight)
+import Data.List (foldl')
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Text hiding (drop, filter, head, map, null, replicate, tail)
-import Data.Text.Encoding qualified as Text
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import GHC.Generics (Generic)
 import Lucid
@@ -20,25 +23,23 @@ import Lucid.Base (makeAttribute)
 import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
 import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
-import Network.Wai.Middleware.Cors (simpleCors)
-import Recipe (Recipe)
 import Servant
 import Servant.API.EventStream (EventSource, EventStream)
 import Servant.HTML.Lucid (HTML)
 import Servant.Server.Generic (AsServer)
 import Servant.Types.SourceT qualified as S
+import Splitvajs
 import System.Timeout (timeout)
 import Web.FormUrlEncoded (FromForm)
 import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
 import Willys qualified
-import Prelude hiding (product)
+import Prelude hiding (exp, product)
 
 data RootApi as = RootAPI
   { homePageEP :: as :- Get '[HTML] NoContent,
-    promotionsPageEP :: as :- "erbjudanden" :> Get '[HTML] PromotionsPage,
     staticEP :: as :- "static" :> Raw,
-    recipesEP :: as :- "recept" :> NamedRoutes RecipeApi,
-    shoppingEP :: as :- "inkop" :> NamedRoutes ShoppingApi
+    shoppingEP :: as :- "inkop" :> NamedRoutes ShoppingApi,
+    splitEP :: as :- "split" :> NamedRoutes SplitApi
   }
   deriving (Generic)
 
@@ -49,8 +50,6 @@ instance FromForm Search
 
 newtype Products = Products {products :: [Willys.Product]}
   deriving (Generic)
-
-type SessionId = Int
 
 data Env = Env {broadcastChan :: Chan ServerEvent}
 
@@ -68,28 +67,19 @@ data ShoppingApi as = ShoppingApi
   }
   deriving (Generic)
 
-data RecipeApi as = RecipeApi
-  { recipePageEP :: as :- Get '[HTML] RecipePage,
-    addRecipeEP :: as :- "nytt" :> ReqBody '[FormUrlEncoded] Recipe :> PostNoContent,
-    productListEP :: as :- "produkter" :> ReqBody '[FormUrlEncoded] Search :> Post '[HTML] ProductSearchList
+data SplitApi as = SplitApi
+  { splitPageEP :: as :- Get '[HTML] SplitPage
   }
   deriving (Generic)
 
 app :: Env -> Application
-app = simpleCors . serve (Proxy @(NamedRoutes RootApi)) . server
+app = serve (Proxy @(NamedRoutes RootApi)) . server
 
 server :: Env -> RootApi AsServer
 server env =
   RootAPI
-    { homePageEP = redirect "/inkop",
-      promotionsPageEP = promotionsPageH,
+    { homePageEP = redirect "/split",
       staticEP = serveDirectoryWebApp "static",
-      recipesEP =
-        RecipeApi
-          { recipePageEP = recipePageH,
-            addRecipeEP = newRecipeH,
-            productListEP = productListH (\p -> [onclick_ $ "addIngredient(" <> params p <> ")"])
-          },
       shoppingEP =
         ShoppingApi
           { shoppingPageEP = shoppingPageH,
@@ -99,8 +89,15 @@ server env =
             removeCheckedEP = removeCheckedH env,
             removeAllEP = removeAllH,
             sseEP = sseH env
+          },
+      splitEP =
+        SplitApi
+          { splitPageEP = splitPageH
           }
     }
+
+splitPageH :: Handler SplitPage
+splitPageH = return SplitPage
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
@@ -181,73 +178,6 @@ productListH attributes search = liftIO $ do
     Left err -> print err >> return (ProductSearchList mempty mempty "Sökresultat" "searched-products")
     Right products -> return $ ProductSearchList attributes products "Sökresultat" "searched-products"
 
-recipePageH :: Handler RecipePage
-recipePageH = liftIO $ do
-  recipes <- eitherDecode <$> LBS.readFile "recipes.json"
-  case RecipePage <$> pure toBeReplaced <*> recipes of
-    Left err -> putStrLn err >> return (RecipePage mempty mempty)
-    Right page -> return page
-
-promotionsPageH :: Handler PromotionsPage
-promotionsPageH = liftIO $ do
-  fetchedPromotions <- runClientDefault fetchPromotions
-  recipes <- eitherDecode <$> LBS.readFile "recipes.json"
-  case fetchedPromotions of
-    Left err -> print err >> return (PromotionsPage mempty mempty)
-    Right promotions ->
-      case PromotionsPage <$> pure promotions <*> recipes of
-        Left err -> putStrLn err >> return (PromotionsPage mempty mempty)
-        Right page -> return page
-
-newRecipeH :: Recipe -> Handler NoContent
-newRecipeH recipe = do
-  liftIO $ do
-    oldRecipes <- eitherDecode <$> LBS.readFile "recipes.json"
-    case addRecipe <$> oldRecipes of
-      Left err -> putStrLn err
-      Right recipes -> LBS.writeFile "recipes.json" $ encode recipes
-
-  redirect "/recept"
-  where
-    addRecipe :: [Recipe] -> [Recipe]
-    addRecipe oldRecipes = recipe : oldRecipes
-
-data PromotionsPage = PromotionsPage [Promotion] [Recipe]
-
-instance ToHtml PromotionsPage where
-  toHtml (PromotionsPage promotions _recipes) = baseTemplate $ do
-    h1_ "Matchande recept"
-    -- ul_ $ do
-    --   let suggestions = recipeSuggestions recipes promotions 1
-    --   if Set.null suggestions
-    --     then "Inga matchande recept hittades"
-    --     else mapM_ (li_ . toHtml) $ suggestions
-    h2_ "Veckans erbjudanden (Willys, Lund)"
-    div_ [id_ "promotions"] $
-      mapM_
-        ( \p -> div_ [class_ "product-container", title_ p.product.name] $ do
-            img_ [class_ "product", src_ p.product.image.url]
-            span_ [class_ "product-name"] $ toHtml p.product.name
-        )
-        promotions
-
-  toHtmlRaw = toHtml
-
-data RecipePage = RecipePage [Willys.Product] [Recipe]
-
-instance ToHtml RecipePage where
-  toHtml (RecipePage products recipes) = baseTemplate $ do
-    h1_ "Recept"
-    p_ "Här kan du lägga till och se dina recept som används för att matcha mot veckans erbjudanden på Willys."
-    i_ "Tips: om en ingrediens kan bytas ut mot en annan, lägg till båda."
-    h2_ "Lägg till recept"
-    recipeForm_ products
-    h2_ "Dina recept"
-    ul_ $ do
-      mapM_ (li_ . toHtml) recipes
-
-  toHtmlRaw = toHtml
-
 baseTemplate :: (Monad m) => HtmlT m b -> HtmlT m b
 baseTemplate content = do
   doctype_
@@ -270,8 +200,7 @@ baseTemplate content = do
 navbar_ :: (Monad m) => HtmlT m ()
 navbar_ = nav_ $ ul_ $ do
   li_ (a_ [href_ "/inkop"] "Inköpslista")
-  li_ (a_ [href_ "/recept"] "Recept")
-  li_ (a_ [href_ "/"] "Erbjudanden")
+  li_ (a_ [href_ "/split"] "Split")
 
 data ProductSearchList = ProductSearchList (Willys.Product -> [Attribute]) [Willys.Product] Text Text
   deriving (Generic)
@@ -294,23 +223,10 @@ productSearchList_ attributes products rubric listId = do
       )
       products
 
-recipeForm_ :: (Monad m) => [Willys.Product] -> HtmlT m ()
-recipeForm_ products = do
-  form_ [action_ "/recept/nytt", method_ "POST", class_ "gapped-form"] $ do
-    div_ [class_ "form-group"] $ do
-      label_ [for_ "recipe-name"] "Namn:"
-      input_ [placeholder_ "Pelles Pitepalt", id_ "recipe-name", name_ "name", type_ "text"]
-    productSearch_ toBeReplaced "/recept/produkter" products
-    label_ [for_ "recipe-ingredients"] "Dina ingredienser:"
-    textarea_ [id_ "recipe-ingredients", name_ "ingredients-show", rows_ "8", readonly_ "true"] ""
-    div_ [class_ "form-group"] $ do
-      button_ [type_ "button", onclick_ "onResetList()"] "Återställ"
-      button_ [type_ "submit", onclick_ "onSubmit"] "Spara"
-
 shoppingPage_ :: (Monad m) => [Willys.Product] -> [Promotion] -> Maybe [ShoppingItem] -> HtmlT m ()
 shoppingPage_ products promotions shoppingList = baseTemplate $ do
   h1_ "Veckans inköpslista"
-  p_ "Sök och lägg till produkter till din inköpslista."
+  p_ "Sök och lägg till produkter till inköpslistan."
   form_ [class_ "gapped-form"] $
     productSearch_ toBeReplaced "/inkop/produkter" products
   toHtml $ ProductSearchList addToShoppingList (map (.product) promotions) "Erbjudanden" "promotion-products"
@@ -330,7 +246,7 @@ shoppingPage_ products promotions shoppingList = baseTemplate $ do
     "Till listan"
 
 addToShoppingList :: Willys.Product -> [Attribute]
-addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxExt_ "json-enc", hxVals_ (Text.decodeUtf8 $ toStrict $ encode p)]
+addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxExt_ "json-enc", hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)]
 
 data ShoppingPage = ShoppingPage ![Willys.Product] ![Promotion] !(Maybe [ShoppingItem])
 
@@ -406,3 +322,98 @@ hxSseConnect_ = makeAttribute "sse-connect"
 
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = makeAttribute "sse-swap"
+
+splitPage_ :: (Monad m) => [Person] -> [Expense] -> HtmlT m ()
+splitPage_ people expenses =
+  baseTemplate $ do
+    h1_ "Splitvajs"
+    h2_ "Lägg till en utgift"
+    form_ [class_ "gapped-form"] $ do
+      div_ [class_ "form-group"] $ do
+        label_ [for_ "title"] "Titel:"
+        input_ [type_ "text", id_ "title", name_ "title", placeholder_ "Titel"]
+      div_ [class_ "form-group"] $ do
+        label_ [for_ "total"] "Totalt:"
+        input_ [type_ "number", id_ "total", name_ "total", placeholder_ "Totalt"]
+      fieldset_ [class_ "radio-form-group"] $ do
+        legend_ "Betalare"
+        mapM_
+          ( \p -> div_ [class_ "radio-group"] $ do
+              input_ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)]
+              label_ [for_ (name p)] (toHtml p)
+          )
+          people
+      fieldset_ [class_ "radio-form-group"] $ do
+        legend_ "Delningstyp"
+        div_ [class_ "radio-group"] $ do
+          input_ [type_ "radio", id_ "share1", name_ "share", value_ "share1"]
+          label_ [for_ "share1"] "Andel"
+        div_ [class_ "radio-group"] $ do
+          input_ [type_ "radio", id_ "share2", name_ "share", value_ "share2"]
+          label_ [for_ "share2"] "Belopp"
+      button_ [type_ "submit", hxPost_ "/split", hxTarget_ "#expenses", hxSwap_ "outerHTML"] "Lägg till"
+    h2_ "Skulder"
+    div_ [class_ "tally-container"] $ do
+      mapM_ debt_ $ M.toList . M.map M.toList $ ious expenses
+    h2_ "Utgifter"
+    div_ [class_ "expenses-container"] $ do
+      mapM_ expense_ expenses
+
+debt_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
+debt_ (p, debts) = div_ [class_ "debt-container"] $ do
+  h3_ [class_ "debt-title"] $ toHtml p.name
+  mapM_ debtItem_ debts
+
+debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
+debtItem_ (p, amount) = span_ $ toHtml $ p.name <> " är skyldig " <> text amount <> " kr"
+
+data SplitPage = SplitPage
+
+instance ToHtml SplitPage where
+  toHtml SplitPage = splitPage_ [ola, wilma] exampleExpenses
+  toHtmlRaw = toHtml
+
+expense_ :: (Monad m) => Expense -> HtmlT m ()
+expense_ expense = div_ [class_ "expense-container"] $ do
+  div_ [class_ "expense-info-container"] $ do
+    h3_ [class_ "expense-title"] $ toHtml expense.title
+    span_ $ toHtml $ show expense.date
+    span_ [class_ "paid-by", style_ $ "background-color: " <> expense.paidBy.color] $ toHtml $ show expense.paidBy
+  div_ [class_ "expense-info-container"] $ do
+    span_ $ toHtml $ show expense.total <> " kr"
+    split_ $ expense
+
+split_ :: (Monad m) => Expense -> HtmlT m ()
+split_ expense = div_ [class_ "split-container"] $ do
+  pieChart_ expense.split 50
+
+pieChart_ :: (Monad m) => Split -> Int -> HtmlT m ()
+pieChart_ (Split shares) size =
+  div_
+    [ style_ $
+        "border-radius: 50%; width:"
+          <> size'
+          <> "px; height: "
+          <> size'
+          <> "px; background-image: conic-gradient("
+          <> colorShares shares
+          <> ");",
+      class_ "pie-chart"
+    ]
+    ""
+  where
+    size' = T.pack (show size)
+    colorShare :: Text -> Int -> Text
+    colorShare col sh = col <> " " <> text sh <> "%"
+    colorShares :: [Share] -> Text
+    colorShares =
+      T.intercalate ", "
+        . snd
+        . foldl'
+          ( \(sum', txt)
+             (Share p sh) -> (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
+          )
+          (0, [])
+
+text :: (Show a) => a -> Text
+text = T.pack . show
