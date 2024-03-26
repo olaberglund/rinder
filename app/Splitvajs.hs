@@ -2,6 +2,8 @@ module Splitvajs where
 
 import Control.Arrow (Arrow ((&&&)))
 import Control.Monad (guard)
+import Data.Bifunctor (second)
+import Data.Function ((&))
 import Data.List (foldl', nub, sortOn)
 import Data.Map qualified as M
 import Data.Map.Strict qualified as SM
@@ -29,23 +31,33 @@ ola = Person "Ola" "RoyalBlue"
 wilma :: Person
 wilma = Person "Wilma" "DarkRed"
 
+ylva :: Person
+ylva = Person "Ylva" "DarkGreen"
+
 exampleExpenses :: [Expense]
-exampleExpenses = take 10 $ cycle [exampleSplit ola 70 30 100, exampleSplit ola 50 50 100, exampleSplit wilma 40 60 100]
+exampleExpenses = take 2 $ cycle [exampleSplit ola 70 30 100, exampleSplit' ylva 25 35 40 100, exampleSplit ola 50 50 99.9, exampleSplit wilma 40 60 83]
 
--- >>> ious exampleExpenses
--- fromList [(Ola,fromList [(Wilma,50.0)])]
-
-exampleSplit :: Person -> Int -> Int -> Double -> Expense
+exampleSplit :: Person -> Int -> Int -> Amount -> Expense
 exampleSplit p sh1 sh2 total =
   Expense
     { split = fromJust $ mkSplit [(Share ola sh1), (Share wilma sh2)],
       total = total,
       paidBy = p,
-      title = "IKEA bord",
+      title = "Matvaror",
       date = read "2021-09-01 12:00:00"
     }
 
-type Amount = Double
+exampleSplit' :: Person -> Int -> Int -> Int -> Amount -> Expense
+exampleSplit' p sh1 sh2 sh3 total =
+  Expense
+    { split = fromJust $ mkSplit [(Share ola sh1), (Share ylva sh2), (Share wilma sh3)],
+      total = total,
+      paidBy = p,
+      title = "Matvaror",
+      date = read "2021-09-01 12:00:00"
+    }
+
+type Amount = Float
 
 data Expense = Expense
   { split :: Split,
@@ -55,38 +67,22 @@ data Expense = Expense
     date :: UTCTime
   }
 
--- TODO: absolute shares
-data Share = Share
-  { person :: Person,
-    share :: Int
-  }
+data Share = Share {person :: Person, share :: Int}
   deriving (Eq)
 
 data Split = Split {shares :: [Share]}
 
-data Debtor = Debtor {person :: Person, amount :: Amount}
+data IOU = IOU {from :: Person, to :: Person, amount :: Amount}
   deriving (Show)
 
--- Given an expense, this is how much a person is owed
--- from the other people in the split
-iou :: Expense -> (Person, [Debtor])
-iou exp = (exp.paidBy, debtors)
+iou :: Expense -> [IOU]
+iou exp = [IOU (paidBy exp) (person s) (calcDebt (total exp) s) | s <- shares exp.split, s.person /= paidBy exp]
   where
     calcDebt :: Amount -> Share -> Amount
     calcDebt total = (* total) . (/ 100) . fromIntegral . share
-    debtors =
-      map (Debtor <$> (.person) <*> calcDebt exp.total) $
-        filter ((/= exp.paidBy) . (.person)) $
-          exp.split.shares
 
 ious :: [Expense] -> M.Map Person (M.Map Person Amount)
-ious = foldl' addDebt mempty . map iou
-  where
-    addDebt :: M.Map Person (M.Map Person Amount) -> (Person, [Debtor]) -> M.Map Person (M.Map Person Amount)
-    addDebt m (p, debtors) = SM.insertWith (M.unionWith (+)) p (collectDebts debtors) m
-
-    collectDebts :: [Debtor] -> M.Map Person Amount
-    collectDebts = M.fromListWith (+) . map ((.person) &&& amount)
+ious = foldl' (\m i -> M.insertWith (M.unionWith (+)) i.from (M.singleton i.to i.amount) m) M.empty . concatMap iou
 
 mkSplit :: [Share] -> Maybe Split
 mkSplit shares = do

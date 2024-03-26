@@ -307,3 +307,9 @@ input[type="radio"] {
 .tally-amount {
   text-align: end;
 }
+
+.tally-container {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+}

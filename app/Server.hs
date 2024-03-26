@@ -23,6 +23,7 @@ import Lucid.Base (makeAttribute)
 import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
 import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
+import Numeric (showFFloat)
 import Servant
 import Servant.API.EventStream (EventSource, EventStream)
 import Servant.HTML.Lucid (HTML)
@@ -361,16 +362,16 @@ splitPage_ people expenses =
 
 debt_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
 debt_ (p, debts) = div_ [class_ "debt-container"] $ do
-  h3_ [class_ "debt-title"] $ toHtml p.name
+  h3_ [class_ "debt-title"] $ toHtml p.name <> " är skyldig:"
   mapM_ debtItem_ debts
 
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
-debtItem_ (p, amount) = span_ $ toHtml $ p.name <> " är skyldig " <> text amount <> " kr"
+debtItem_ (p, amount) = p_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
 
 data SplitPage = SplitPage
 
 instance ToHtml SplitPage where
-  toHtml SplitPage = splitPage_ [ola, wilma] exampleExpenses
+  toHtml SplitPage = splitPage_ [ola, wilma, ylva] exampleExpenses
   toHtmlRaw = toHtml
 
 expense_ :: (Monad m) => Expense -> HtmlT m ()
