@@ -1,12 +1,8 @@
 module Splitvajs where
 
-import Control.Arrow (Arrow ((&&&)))
 import Control.Monad (guard)
-import Data.Bifunctor (second)
-import Data.Function ((&))
 import Data.List (foldl', nub, sortOn)
 import Data.Map qualified as M
-import Data.Map.Strict qualified as SM
 import Data.Maybe (fromJust)
 import Data.Ord (Down (..))
 import Data.Text (Text)
@@ -35,7 +31,7 @@ ylva :: Person
 ylva = Person "Ylva" "DarkGreen"
 
 exampleExpenses :: [Expense]
-exampleExpenses = take 2 $ cycle [exampleSplit ola 70 30 100, exampleSplit' ylva 25 35 40 100, exampleSplit ola 50 50 99.9, exampleSplit wilma 40 60 83]
+exampleExpenses = take 20 $ cycle [exampleSplit ola 70 30 100, exampleSplit' ylva 10 10 80 100, exampleSplit' wilma 25 35 40 100, exampleSplit ola 50 50 100, exampleSplit wilma 40 60 80]
 
 exampleSplit :: Person -> Int -> Int -> Amount -> Expense
 exampleSplit p sh1 sh2 total =
@@ -76,7 +72,7 @@ data IOU = IOU {from :: Person, to :: Person, amount :: Amount}
   deriving (Show)
 
 iou :: Expense -> [IOU]
-iou exp = [IOU (paidBy exp) (person s) (calcDebt (total exp) s) | s <- shares exp.split, s.person /= paidBy exp]
+iou exp = [IOU s.person exp.paidBy (calcDebt exp.total s) | s <- exp.split.shares, s.person /= exp.paidBy]
   where
     calcDebt :: Amount -> Share -> Amount
     calcDebt total = (* total) . (/ 100) . fromIntegral . share
@@ -88,4 +84,4 @@ mkSplit :: [Share] -> Maybe Split
 mkSplit shares = do
   guard $ sum (map share shares) == 100
   guard $ length (nub shares) == length shares
-  Just $ Split $ sortOn (Down . (.person)) shares
+  Just $ Split $ sortOn (Down . (.share)) shares

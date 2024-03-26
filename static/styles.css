@@ -18,7 +18,7 @@ body {
   padding: 0 10px;
 }
 
-ul {
+nav ul {
   display: flex;
   list-style: none;
   padding: 0;

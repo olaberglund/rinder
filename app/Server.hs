@@ -355,18 +355,19 @@ splitPage_ people expenses =
       button_ [type_ "submit", hxPost_ "/split", hxTarget_ "#expenses", hxSwap_ "outerHTML"] "Lägg till"
     h2_ "Skulder"
     div_ [class_ "tally-container"] $ do
-      mapM_ debt_ $ M.toList . M.map M.toList $ ious expenses
+      mapM_ iou_ $ M.toList . M.map M.toList $ ious expenses
     h2_ "Utgifter"
     div_ [class_ "expenses-container"] $ do
       mapM_ expense_ expenses
 
-debt_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
-debt_ (p, debts) = div_ [class_ "debt-container"] $ do
-  h3_ [class_ "debt-title"] $ toHtml p.name <> " är skyldig:"
-  mapM_ debtItem_ debts
+iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
+iou_ (p, ious) = div_ [class_ "debt-container"] $ do
+  h3_ [class_ "debt-title", style_ $ "background-color: " <> p.color] $ toHtml p.name <> " är skyldig:"
+  ul_ $
+    mapM_ debtItem_ ious
 
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
-debtItem_ (p, amount) = p_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
+debtItem_ (p, amount) = li_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
 
 data SplitPage = SplitPage
 
