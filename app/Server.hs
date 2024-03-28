@@ -9,6 +9,7 @@ import Data.Binary.Builder (fromByteString, fromLazyByteString)
 import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
+import Data.Coerce (coerce)
 import Data.Either (fromRight)
 import Data.List (foldl')
 import Data.Map qualified as M
@@ -355,16 +356,16 @@ splitPage_ people expenses =
       button_ [type_ "submit", hxPost_ "/split", hxTarget_ "#expenses", hxSwap_ "outerHTML"] "Lägg till"
     h2_ "Skulder"
     div_ [class_ "tally-container"] $ do
-      mapM_ iou_ $ M.toList . M.map M.toList $ ious expenses
+      mapM_ iou_ $ M.toList $ M.map M.toList $ coerce $ transactions expenses
     h2_ "Utgifter"
     div_ [class_ "expenses-container"] $ do
       mapM_ expense_ expenses
 
 iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
-iou_ (p, ious) = div_ [class_ "debt-container"] $ do
+iou_ (p, ious') = div_ [class_ "debt-container"] $ do
   h3_ [class_ "debt-title", style_ $ "background-color: " <> p.color] $ toHtml p.name <> " är skyldig:"
   ul_ $
-    mapM_ debtItem_ ious
+    mapM_ debtItem_ ious'
 
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
 debtItem_ (p, amount) = li_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
@@ -398,24 +399,24 @@ pieChart_ (Split shares) size =
           <> "px; height: "
           <> size'
           <> "px; background-image: conic-gradient("
-          <> colorShares shares
+          <> colorShares 120 shares
           <> ");",
       class_ "pie-chart"
     ]
     ""
   where
     size' = T.pack (show size)
-    colorShare :: Text -> Int -> Text
+    colorShare :: Text -> Float -> Text
     colorShare col sh = col <> " " <> text sh <> "%"
-    colorShares :: [Share] -> Text
-    colorShares =
+    colorShares :: Amount -> [Share] -> Text
+    colorShares total =
       T.intercalate ", "
         . snd
-        . foldl'
-          ( \(sum', txt)
-             (Share p sh) -> (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
-          )
-          (0, [])
+        . foldl' (genColorText total) (0, [])
+
+    genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
+    genColorText _ (sum', txt) (Percentage p sh) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
+    genColorText total (sum', txt) (Fixed p sh) = (sum' + sh / total, txt <> [colorShare p.color (sum' / total), colorShare p.color (sum' + sh / total)])
 
 text :: (Show a) => a -> Text
 text = T.pack . show
