@@ -4,7 +4,7 @@
 }
 
 body {
-  font-size: 18px;
+  font-size: 1.125em;
   line-height: 1.6;
   background-color: #121212;
   font-family: fonten, sans-serif;
@@ -40,10 +40,16 @@ nav ul li a {
   }
 }
 
+input[type="text"],
+input[type="number"] {
+  border-radius: 5px;
+}
+
 form ul {
   height: 300px;
   overflow-y: auto;
   border: 1px solid #fff;
+  border-radius: 5px;
 }
 
 button {
@@ -64,6 +70,7 @@ button {
 }
 
 .radio-form-group {
+  min-width: 0;
   display: flex;
   flex: 1;
   justify-content: space-around;
@@ -102,6 +109,7 @@ input {
   flex-wrap: wrap;
   align-content: flex-start;
   border: 1px solid #fff;
+  border-radius: 5px;
   min-width: 0;
 }
 
@@ -145,6 +153,7 @@ input {
   flex-wrap: wrap;
   align-content: flex-start;
   border: 1px solid #fff;
+  border-radius: 5px;
 }
 
 #shopping-list {
@@ -152,6 +161,7 @@ input {
   flex-direction: column;
   justify-content: flex-start;
   border: 1px solid #fff;
+  border-radius: 5px;
   min-height: 140px;
 }
 
@@ -233,30 +243,40 @@ input {
   cursor: pointer;
 }
 
+fieldset {
+  border-radius: 5px;
+}
+
 .expense-container {
   display: flex;
   justify-content: space-between;
   padding: 20px;
   width: 100%;
   align-items: center;
-  border-left: 1px solid #fff;
-  border-right: 1px solid #fff;
   box-sizing: border-box;
   border-bottom: 1px dashed #fff;
 }
 
 .expense-title {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expense-info-container {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.no-shrink {
+  min-width: max-content;
 }
 
 .split-container {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   width: 100%;
 }
 
@@ -266,10 +286,12 @@ input {
 
 .paid-by {
   padding: 0 2px 0 2px;
+  border-radius: 5px;
 }
 
 .expenses-container {
   border: 1px solid #fff;
+  border-radius: 5px;
   width: 100%;
 }
 
@@ -278,16 +300,17 @@ input {
 }
 
 input[type="radio"] {
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   margin: 0;
 }
 
 .radio-group {
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  flex: 1;
   gap: 10px;
+  justify-content: center;
 }
 
 .tally {
@@ -312,4 +335,39 @@ input[type="radio"] {
   display: flex;
   justify-content: space-around;
   gap: 20px;
+}
+
+.debt-form-group {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  min-width: 0;
+}
+.debtor-form-group {
+  display: flex;
+  align-items: center;
+}
+
+@media screen and (min-width: 768px) {
+  .debt-form-group {
+    flex-direction: row;
+  }
+}
+
+.form-comment {
+  margin: 0 10px 0 10px;
+}
+
+#total {
+  width: 100px;
+}
+
+#amount {
+  width: 80px;
+}
+
+.date-container {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
 }

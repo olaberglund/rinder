@@ -9,15 +9,14 @@ import Data.Binary.Builder (fromByteString, fromLazyByteString)
 import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import Data.Coerce (coerce)
 import Data.Either (fromRight)
 import Data.List (foldl')
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
+import Data.Time (getCurrentTime, getCurrentTimeZone)
 import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base (makeAttribute)
@@ -70,7 +69,9 @@ data ShoppingApi as = ShoppingApi
   deriving (Generic)
 
 data SplitApi as = SplitApi
-  { splitPageEP :: as :- Get '[HTML] SplitPage
+  { splitPageEP :: as :- Get '[HTML] SplitPage,
+    newExpenseEP :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] ExpenseForm :> Post '[HTML] Transactions,
+    settleUpEP :: as :- "gor-upp" :> Post '[HTML] Transactions
   }
   deriving (Generic)
 
@@ -94,12 +95,42 @@ server env =
           },
       splitEP =
         SplitApi
-          { splitPageEP = splitPageH
+          { splitPageEP = splitPageH,
+            newExpenseEP = newExpenseH,
+            settleUpEP = settleUpH
           }
     }
 
+settleUpH :: Handler Transactions
+settleUpH = liftIO $ do
+  res <- BS.readFile "transactions.json"
+  utc <- getCurrentTime
+  tz <- getCurrentTimeZone
+  case eitherDecodeStrict res of
+    Right ts -> do
+      let newTs = map SettlementTransaction (settlements tz utc ts) <> ts
+      LBS.writeFile "transactions.json" (encode newTs)
+      return (Transactions newTs)
+    Left err -> print err >> return (Transactions [])
+
+newExpenseH :: ExpenseForm -> Handler Transactions
+newExpenseH form = liftIO $ do
+  utc <- getCurrentTime
+  tz <- getCurrentTimeZone
+  res <- BS.readFile "transactions.json"
+  case eitherDecodeStrict res of
+    Right ts -> do
+      let newTs = ExpenseTransaction (toExpense form tz utc) : ts
+      LBS.writeFile "transactions.json" (encode newTs)
+      return (Transactions newTs)
+    Left err -> print err >> return (Transactions [])
+
 splitPageH :: Handler SplitPage
-splitPageH = return SplitPage
+splitPageH = liftIO $ do
+  res <- BS.readFile "transactions.json"
+  case eitherDecodeStrict res of
+    Right ts -> return (SplitPage ts)
+    Left err -> print err >> return (SplitPage [])
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
@@ -325,41 +356,61 @@ hxSseConnect_ = makeAttribute "sse-connect"
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = makeAttribute "sse-swap"
 
-splitPage_ :: (Monad m) => [Person] -> [Expense] -> HtmlT m ()
-splitPage_ people expenses =
+splitPage_ :: (Monad m) => [Transaction] -> HtmlT m ()
+splitPage_ expenses =
   baseTemplate $ do
     h1_ "Splitvajs"
     h2_ "Lägg till en utgift"
-    form_ [class_ "gapped-form"] $ do
+    form_ [class_ "gapped-form", id_ "split-form"] $ do
       div_ [class_ "form-group"] $ do
-        label_ [for_ "title"] "Titel:"
-        input_ [type_ "text", id_ "title", name_ "title", placeholder_ "Titel"]
-      div_ [class_ "form-group"] $ do
-        label_ [for_ "total"] "Totalt:"
-        input_ [type_ "number", id_ "total", name_ "total", placeholder_ "Totalt"]
+        label_ [for_ "rubric"] "Rubrik:"
+        input_ [type_ "text", id_ "rubric", name_ "rubric"]
       fieldset_ [class_ "radio-form-group"] $ do
         legend_ "Betalare"
         mapM_
           ( \p -> div_ [class_ "radio-group"] $ do
-              input_ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)]
+              input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if p == head people then [checked_] else mempty)
               label_ [for_ (name p)] (toHtml p)
           )
           people
-      fieldset_ [class_ "radio-form-group"] $ do
-        legend_ "Delningstyp"
-        div_ [class_ "radio-group"] $ do
-          input_ [type_ "radio", id_ "share1", name_ "share", value_ "share1"]
-          label_ [for_ "share1"] "Andel"
-        div_ [class_ "radio-group"] $ do
-          input_ [type_ "radio", id_ "share2", name_ "share", value_ "share2"]
-          label_ [for_ "share2"] "Belopp"
-      button_ [type_ "submit", hxPost_ "/split", hxTarget_ "#expenses", hxSwap_ "outerHTML"] "Lägg till"
-    h2_ "Skulder"
-    div_ [class_ "tally-container"] $ do
-      mapM_ iou_ $ M.toList $ M.map M.toList $ coerce $ transactions expenses
-    h2_ "Utgifter"
-    div_ [class_ "expenses-container"] $ do
-      mapM_ expense_ expenses
+      fieldset_ [class_ "debt-form-group"] $ do
+        legend_ "Skuld"
+        div_ [class_ "debtor-form-group"] $ do
+          select_ [name_ "debtor"] $ do
+            mapM_
+              ( \p -> option_ [value_ (name p)] (toHtml p)
+              )
+              (reverse people)
+          span_ [class_ "form-comment"] "ska betala"
+        div_ [class_ "debtor-form-group"] $ do
+          input_ [type_ "number", id_ "amount", name_ "amount", value_ "50", autocomplete_ "off"]
+          select_ [autocomplete_ "off", name_ "share-type"] $ do
+            option_ [value_ "percentage", selected_ "selected"] "%"
+            option_ [value_ "fixed", autocomplete_ "off"] "kr"
+          span_ [class_ "form-comment"] "av"
+        div_ [class_ "debtor-form-group"] $ do
+          input_ [type_ "number", id_ "total", name_ "total", min_ "0", autocomplete_ "off"]
+          span_ "kr"
+          span_ "*"
+      small_ "*Resten betalas av den andre."
+      button_ [type_ "submit", hxPost_ "/split/lagg-till", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Lägg till"
+    transactions_ expenses
+
+transactions_ :: (Monad m) => [Transaction] -> HtmlT m ()
+transactions_ transactions = div_ [id_ "tally-expenses-container"] $ do
+  h2_ "Skulder"
+  div_ [class_ "tally-container"] $ do
+    mapM_ iou_ $ debtsToList $ simplifiedDebts transactions
+  button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
+  h2_ "Utgifter"
+  div_ [class_ "expenses-container"] $ do
+    mapM_ transaction_ transactions
+
+data Transactions = Transactions [Transaction]
+
+instance ToHtml Transactions where
+  toHtml (Transactions transactions) = transactions_ transactions
+  toHtmlRaw = toHtml
 
 iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
 iou_ (p, ious') = div_ [class_ "debt-container"] $ do
@@ -370,28 +421,37 @@ iou_ (p, ious') = div_ [class_ "debt-container"] $ do
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
 debtItem_ (p, amount) = li_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
 
-data SplitPage = SplitPage
+data SplitPage = SplitPage [Transaction]
 
 instance ToHtml SplitPage where
-  toHtml SplitPage = splitPage_ [ola, wilma, ylva] exampleExpenses
+  toHtml (SplitPage exps) = splitPage_ exps
   toHtmlRaw = toHtml
 
-expense_ :: (Monad m) => Expense -> HtmlT m ()
-expense_ expense = div_ [class_ "expense-container"] $ do
+transaction_ :: (Monad m) => Transaction -> HtmlT m ()
+transaction_ (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date})) = div_ [class_ "expense-container"] $ do
   div_ [class_ "expense-info-container"] $ do
-    h3_ [class_ "expense-title"] $ toHtml expense.title
-    span_ $ toHtml $ show expense.date
-    span_ [class_ "paid-by", style_ $ "background-color: " <> expense.paidBy.color] $ toHtml $ show expense.paidBy
+    h3_ [class_ "expense-title", title_ rubric] $ toHtml rubric
+    div_ [class_ "date-container"] $ do
+      span_ $ toHtml $ formatDate date
+      span_ [class_ "paid-by", style_ $ "background-color: " <> paidBy.color] $ toHtml $ show paidBy
+  div_ [class_ "expense-info-container no-shrink"] $ do
+    span_ $ toHtml $ show total <> "kr"
+    split_ exp
+transaction_ (SettlementTransaction (Settlement {from, to, amount, date})) = div_ [class_ "expense-container"] $ do
   div_ [class_ "expense-info-container"] $ do
-    span_ $ toHtml $ show expense.total <> " kr"
-    split_ $ expense
+    h3_ [class_ "expense-title", title_ $ "Swish till " <> to.name] $ "Swish till " <> toHtml to
+    div_ [class_ "date-container"] $ do
+      span_ $ toHtml $ formatDate date
+      span_ [class_ "paid-by", style_ $ "background-color: " <> from.color] $ toHtml $ show from
+  div_ [class_ "expense-info-container"] $ do
+    span_ $ toHtml $ show amount <> "kr"
 
 split_ :: (Monad m) => Expense -> HtmlT m ()
 split_ expense = div_ [class_ "split-container"] $ do
-  pieChart_ expense.split 50
+  pieChart_ expense 50
 
-pieChart_ :: (Monad m) => Split -> Int -> HtmlT m ()
-pieChart_ (Split shares) size =
+pieChart_ :: (Monad m) => Expense -> Int -> HtmlT m ()
+pieChart_ exp size =
   div_
     [ style_ $
         "border-radius: 50%; width:"
@@ -399,7 +459,7 @@ pieChart_ (Split shares) size =
           <> "px; height: "
           <> size'
           <> "px; background-image: conic-gradient("
-          <> colorShares 120 shares
+          <> colorShares exp.total exp.split.shares
           <> ");",
       class_ "pie-chart"
     ]
@@ -416,7 +476,10 @@ pieChart_ (Split shares) size =
 
     genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
     genColorText _ (sum', txt) (Percentage p sh) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
-    genColorText total (sum', txt) (Fixed p sh) = (sum' + sh / total, txt <> [colorShare p.color (sum' / total), colorShare p.color (sum' + sh / total)])
+    genColorText total (sum', txt) (Fixed p sh) = (sum' + toPercent sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + toPercent sh)])
+      where
+        toPercent :: Amount -> Float
+        toPercent = (* 100) . (/ total)
 
 text :: (Show a) => a -> Text
 text = T.pack . show
