@@ -126,6 +126,7 @@ input {
   width: 100%;
   outline: 1px solid #fff;
   color: black;
+  border-radius: 5px;
   background-color: #fff;
 }
 
@@ -383,4 +384,15 @@ input[type="radio"] {
   font-size: 2em;
   line-height: normal;
   margin-right: 4px;
+}
+
+.product-promo {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#edit-action-buttons {
+  display: flex;
+  gap: 20px;
 }

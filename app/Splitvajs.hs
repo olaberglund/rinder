@@ -1,6 +1,7 @@
 module Splitvajs where
 
 import Control.Arrow (second)
+import Control.Monad ((>=>))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (bimap)
 import Data.Coerce (coerce)
@@ -10,9 +11,12 @@ import Data.Ord (Down (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (LocalTime, TimeZone, UTCTime, defaultTimeLocale, formatTime, utcToLocalTime)
+import Data.UUID (UUID)
+import Debug.Trace (traceShow, traceShowId)
 import GHC.Generics (Generic)
 import Lucid
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
+import Willys (safeHead)
 import Prelude hiding (exp, product)
 
 data Person = Person {name :: Text, color :: Text}
@@ -68,7 +72,8 @@ data Transaction = ExpenseTransaction Expense | SettlementTransaction Settlement
   deriving anyclass (FromJSON, ToJSON)
 
 data Expense = Expense
-  { split :: Split,
+  { id :: UUID,
+    split :: Split,
     total :: Amount,
     paidBy :: Person,
     rubric :: Text,
@@ -105,21 +110,21 @@ instance FromForm ExpenseForm where
     rubric <- (parseUnique "rubric" form >>= mayNotBeEmpty)
     amount <- (parseUnique "amount" form >>= mayNotBeNegative "Amount")
     shareType <- parseUnique "share-type" form
+    oPerson <- note "Couldn't find person" (otherPerson debtor)
     split' <- case shareType of
       "percentage" ->
         if amount > 100
           then Left "Percentage may not be greater than 100"
-          else
-            mkSplit total [Percentage debtor amount, Percentage (otherPerson debtor) (100 - amount)]
-      "fixed" -> mkSplit total [Fixed debtor amount, Fixed (otherPerson debtor) (total - amount)]
+          else mkSplit total [Percentage debtor amount True, Percentage oPerson (100 - amount) False]
+      "fixed" -> mkSplit total [Fixed debtor amount True, Fixed oPerson (total - amount) False]
       _ -> Left "Invalid share type"
     pure $ ExpenseForm debtor paidBy split' shareType amount rubric total
     where
       findPerson :: Text -> Either Text Person
       findPerson n = maybe (Left $ "Person " <> n <> " not found") Right $ find ((== n) . name) people
 
-      otherPerson :: Person -> Person
-      otherPerson p = head $ filter (/= p) people
+      otherPerson :: Person -> Maybe Person
+      otherPerson p = safeHead $ filter (/= p) people
 
       mayNotBeNegative :: Text -> Float -> Either Text Float
       mayNotBeNegative prop a = if a >= 0 then Right a else Left $ prop <> " may not be negative"
@@ -127,12 +132,19 @@ instance FromForm ExpenseForm where
       mayNotBeEmpty :: Text -> Either Text Text
       mayNotBeEmpty rubric = if T.null rubric then Left "Rubric may not be empty" else Right rubric
 
-toExpense :: ExpenseForm -> TimeZone -> UTCTime -> Expense
-toExpense form tz utc = Expense form.split form.total form.paidBy form.rubric (utcToLocalTime tz utc)
+      note :: Text -> Maybe a -> Either Text a
+      note e = maybe (Left e) Right
 
-data Share = Percentage {person :: Person, percent :: Float} | Fixed {person :: Person, amount :: Amount}
-  deriving (Eq, Generic, Show)
+toExpense :: ExpenseForm -> UUID -> LocalTime -> Expense
+toExpense form id' localTime = Expense id' form.split form.total form.paidBy form.rubric localTime
+
+data Share = Percentage {person :: Person, percent :: Float, entered :: Bool} | Fixed {person :: Person, amount :: Amount, entered :: Bool}
+  deriving (Eq, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+instance Show Share where
+  show (Percentage _ _ _) = "percentage"
+  show (Fixed _ _ _) = "fixed"
 
 data Split = Split {shares :: [Share]}
   deriving (Generic, Show)
@@ -156,8 +168,8 @@ formatDate :: LocalTime -> Text
 formatDate = T.pack . formatTime defaultTimeLocale "%F - %R"
 
 calcDebt :: Amount -> Share -> Amount
-calcDebt total (Percentage _ p) = (p * total) / 100
-calcDebt _ (Fixed _ a) = a
+calcDebt total (Percentage _ p _) = (p * total) / 100
+calcDebt _ (Fixed _ a _) = a
 
 iousToMap :: [IOU] -> IOUMap
 iousToMap = IOUMap . foldl' (\m i -> M.insertWith (M.unionWith (+)) i.from (M.singleton i.to i.amount) m) M.empty
@@ -167,9 +179,11 @@ ious = concatMap iou
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
+  | any ((< 0) . shareAmount) shares = Left "Shares may not be negative"
   | sum (map (calcDebt total) shares) /= total = Left "Sum of shares does not equal total"
   | length (nub shares) /= length shares = Left "A person may not be listed more than once in the split"
-  | otherwise = Right $ Split $ sortOn (Down . (calcDebt total)) shares
+  | length (shares) < 2 = Left "An expense must be split between at least two people"
+  | otherwise = Right $ Split $ sortOn (.person) shares
 
 tally :: IOUMap -> M.Map Person Amount
 tally = M.foldlWithKey' mkPersonalTally M.empty . coerce
@@ -196,3 +210,22 @@ newtype IOUMap = IOUMap (M.Map Person (M.Map Person Amount))
 
 tallies :: [Transaction] -> ([Tally Owed], [Tally Owing])
 tallies = splitTally . tally . iousToMap . ious
+
+peopleOfExpense :: Expense -> [Person]
+peopleOfExpense (Expense {split}) = map person split.shares
+
+singleDebtor :: Expense -> Maybe Share
+singleDebtor exp = find entered exp.split.shares
+
+shareAmount :: Share -> Amount
+shareAmount (Percentage _ p _) = p
+shareAmount (Fixed _ a _) = a
+
+findExpense :: UUID -> [Transaction] -> Maybe Expense
+findExpense i = find isExpense >=> getExpense
+  where
+    isExpense (ExpenseTransaction e) = i == e.id
+    isExpense _ = False
+
+    getExpense (ExpenseTransaction e) = Just e
+    getExpense _ = Nothing

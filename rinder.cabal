@@ -100,7 +100,8 @@ executable rinder
                       binary,
                       servant-event-stream,
                       servant,
-                      time
+                      time,
+                      uuid
 
     ghc-options: -threaded 
 

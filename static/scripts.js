@@ -45,7 +45,6 @@ function toggleHidden(checkbox) {
     document.getElementById("checkbox-url-" + checkbox.id).checked = false;
   }
 }
-document.body.addEventListener("htmx:afterSwap", function (evt) {
-  const form = document.querySelector("#split-form");
-  form.reset();
+document.body.addEventListener("htmx:afterSwap", function (_evt) {
+  document.querySelector("#split-form")?.reset();
 });

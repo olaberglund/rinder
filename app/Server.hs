@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-
 module Server where
 
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
@@ -13,17 +11,19 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Char (isNumber)
 import Data.Either (fromRight)
-import Data.List (foldl')
+import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
-import Data.Time (getCurrentTime, getCurrentTimeZone)
+import Data.Time (getCurrentTime, getCurrentTimeZone, utcToLocalTime)
+import Data.UUID (UUID)
+import Data.UUID.V4 (nextRandom)
 import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base (makeAttribute)
-import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
+import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPatch_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
 import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
 import Numeric (showFFloat)
@@ -75,12 +75,29 @@ data SplitApi as = SplitApi
   { splitPageEP :: as :- Get '[HTML] SplitPage,
     newExpenseEP :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] ExpenseForm :> Post '[HTML] Transactions,
     settleUpEP :: as :- "gor-upp" :> Post '[HTML] Transactions,
-    editExpensePageEP :: as :- "redigera" :> Capture "date" Text :> Get '[HTML] (Either Page404 EditExpensePage)
+    editExpensePageEP :: as :- "redigera" :> Capture "id" UUID :> Get '[HTML] EditExpensePage,
+    saveExpenseEP :: as :- "spara" :> Capture "id" UUID :> ReqBody '[FormUrlEncoded] ExpenseForm :> Patch '[HTML] EditExpensePage,
+    removeExpenseEp :: as :- "ta-bort" :> Capture "id" UUID :> Delete '[HTML] NoContent
   }
   deriving (Generic)
 
+data Feedback = Success | Failure
+
+data FeedbackMessage = FeedbackMessage Feedback Text
+
+instance ToHtml FeedbackMessage where
+  toHtml (FeedbackMessage Success msg) = span_ [class_ "toast-sucess"] $ toHtml msg
+  toHtml (FeedbackMessage Failure msg) = span_ [class_ "toast-fail"] $ toHtml msg
+  toHtmlRaw = toHtml
+
 app :: Env -> Application
-app = serve (Proxy @(NamedRoutes RootApi)) . server
+app env = serveWithContext (Proxy @(NamedRoutes RootApi)) (customFormatters :. EmptyContext) (server env)
+  where
+    customFormatters :: ErrorFormatters
+    customFormatters = defaultErrorFormatters {notFoundErrorFormatter = const (err404' Nothing)}
+
+err404' :: Maybe Text -> ServerError
+err404' msg = err404 {errBody = renderBS $ toHtml (Page404 (fromMaybe "Inget att se här..." msg))}
 
 server :: Env -> RootApi AsServer
 server env =
@@ -102,30 +119,70 @@ server env =
           { splitPageEP = splitPageH,
             newExpenseEP = newExpenseH,
             settleUpEP = settleUpH,
-            editExpensePageEP = editExpensePageH
+            editExpensePageEP = editExpensePageH,
+            saveExpenseEP = saveExpenseH,
+            removeExpenseEp = removeExpenseH
           }
     }
 
-editExpensePageH :: Text -> Handler (Either Page404 EditExpensePage)
-editExpensePageH encodedDate = liftIO $ do
-  res <- BS.readFile "transactions.json"
+transactionsFile :: FilePath
+transactionsFile = "transactions.json"
+
+shoppingListFile :: FilePath
+shoppingListFile = "shopping-list.json"
+
+removeExpenseH :: UUID -> Handler NoContent
+removeExpenseH uuid = do
+  res <- liftIO $ BS.readFile transactionsFile
   case eitherDecodeStrict res of
-    Right (ts :: [Transaction]) -> do
-      let expenses = [exp | ExpenseTransaction exp@(Expense {date = d}) <- ts, encodeDate d == encodedDate]
-      case safeHead expenses of
-        Just (Expense {date = d}) -> return (Right $ EditExpensePage $ formatDate d)
-        Nothing -> return (Left (Page404 (Just "Ingen sådan utgift hittades")))
-    Left err -> print err >> return (Left (Page404 Nothing))
+    Right ts -> do
+      let newTs = filter (\t -> case t of ExpenseTransaction exp -> exp.id /= uuid; _ -> True) ts
+      liftIO $ LBS.writeFile transactionsFile (encode newTs)
+      redirect "/split"
+    Left err -> liftIO (print err) >> throwError err500
+
+saveExpenseH :: UUID -> ExpenseForm -> Handler EditExpensePage
+saveExpenseH uuid form = do
+  res <- liftIO $ BS.readFile transactionsFile
+  case eitherDecodeStrict res of
+    Right ts -> do
+      let newTs = map replaceExpense ts
+      liftIO $ LBS.writeFile transactionsFile (encode newTs)
+      let mexp = findExpense uuid newTs
+      case (mexp, mexp >>= singleDebtor) of
+        (Just exp, Just debtor) -> return $ EditExpensePage exp debtor
+        _ -> throwError $ err404' (Just "Ingen sådan utgift hittades")
+    Left err -> liftIO (print err) >> throwError err500
+  where
+    replaceExpense :: Transaction -> Transaction
+    replaceExpense (ExpenseTransaction exp) =
+      if exp.id == uuid
+        then ExpenseTransaction (toExpense form exp.id exp.date)
+        else ExpenseTransaction exp
+    replaceExpense t = t
+
+editExpensePageH :: UUID -> Handler EditExpensePage
+editExpensePageH uuid = do
+  res <- liftIO $ BS.readFile transactionsFile
+  case eitherDecodeStrict res of
+    Right ts -> do
+      let expense = findExpense uuid ts
+      case expense of
+        Just exp -> case singleDebtor exp of
+          Just share -> return $ EditExpensePage exp share
+          Nothing -> throwError $ err404' (Just "Just nu stöds inte redigering av utgifter med fler deltagare än två")
+        Nothing -> throwError $ err404' (Just "Ingen sådan utgift hittades")
+    Left err -> liftIO (print err) >> throwError err500
 
 settleUpH :: Handler Transactions
 settleUpH = liftIO $ do
-  res <- BS.readFile "transactions.json"
+  res <- BS.readFile transactionsFile
   utc <- getCurrentTime
   tz <- getCurrentTimeZone
   case eitherDecodeStrict res of
     Right ts -> do
       let newTs = map SettlementTransaction (settlements tz utc ts) <> ts
-      LBS.writeFile "transactions.json" (encode newTs)
+      LBS.writeFile transactionsFile (encode newTs)
       return (Transactions newTs)
     Left err -> print err >> return (Transactions [])
 
@@ -133,17 +190,18 @@ newExpenseH :: ExpenseForm -> Handler Transactions
 newExpenseH form = liftIO $ do
   utc <- getCurrentTime
   tz <- getCurrentTimeZone
-  res <- BS.readFile "transactions.json"
+  res <- BS.readFile transactionsFile
+  uuid <- nextRandom
   case eitherDecodeStrict res of
     Right ts -> do
-      let newTs = ExpenseTransaction (toExpense form tz utc) : ts
-      LBS.writeFile "transactions.json" (encode newTs)
+      let newTs = ExpenseTransaction (toExpense form uuid (utcToLocalTime tz utc)) : ts
+      LBS.writeFile transactionsFile (encode newTs)
       return (Transactions newTs)
     Left err -> print err >> return (Transactions [])
 
 splitPageH :: Handler SplitPage
 splitPageH = liftIO $ do
-  res <- BS.readFile "transactions.json"
+  res <- BS.readFile transactionsFile
   case eitherDecodeStrict res of
     Right ts -> return (SplitPage ts)
     Left err -> print err >> return (SplitPage [])
@@ -171,11 +229,11 @@ toggle Checked = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Handler [ShoppingItem]
-removeAllH = liftIO $ LBS.writeFile "shopping-list.json" "[]" >> return []
+removeAllH = liftIO $ LBS.writeFile shoppingListFile "[]" >> return []
 
 removeCheckedH :: Env -> Handler [ShoppingItem]
 removeCheckedH env = liftIO $ do
-  res <- BS.readFile "shopping-list.json"
+  res <- BS.readFile shoppingListFile
   case eitherDecodeStrict res of
     Right ps ->
       let newItems = filter (\i -> i.check == Unchecked) ps
@@ -183,11 +241,11 @@ removeCheckedH env = liftIO $ do
     Left err -> print err >> return []
 
 toggleProductH :: Env -> Willys.Product -> Handler NoContent
-toggleProductH env product = liftIO $ do
-  res <- BS.readFile "shopping-list.json"
+toggleProductH env product' = liftIO $ do
+  res <- BS.readFile shoppingListFile
   case eitherDecodeStrict res of
     Right ps ->
-      let newItems = map (\i -> if i.product == product then i {check = toggle i.check} else i) ps
+      let newItems = map (\i -> if i.product == product' then i {check = toggle i.check} else i) ps
        in updateAndBroadCast env newItems >> return NoContent
     Left err -> print err >> return NoContent
 
@@ -197,26 +255,26 @@ asServerEvent = ServerEvent Nothing Nothing . map (fromLazyByteString . renderBS
 shoppingPageH :: Handler ShoppingPage
 shoppingPageH = liftIO $ do
   fetchedPromotions <- runClientDefault fetchPromotions
-  shoppingItems <- eitherDecode <$> LBS.readFile "shopping-list.json"
+  shoppingItems <- eitherDecode <$> LBS.readFile shoppingListFile
   case shoppingItems of
     Left err -> putStrLn err >> return (ShoppingPage mempty mempty mempty)
     Right list -> return (ShoppingPage mempty (fromRight mempty fetchedPromotions) (Just list))
 
 addProductH :: Env -> Willys.Product -> Handler [ShoppingItem]
-addProductH env product = liftIO $ do
-  res <- BS.readFile "shopping-list.json"
+addProductH env product' = liftIO $ do
+  res <- BS.readFile shoppingListFile
   case eitherDecodeStrict res of
     Right ps ->
-      let newList = ShoppingItem product Unchecked : ps
+      let newList = ShoppingItem product' Unchecked : ps
        in updateAndBroadCast env newList
     Left err -> print err >> return []
 
 redirect :: BS.ByteString -> Handler a
-redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
+redirect url = throwError err303 {errHeaders = [(hLocation, url), ("HX-Redirect", "http://localhost:1234" <> url)]}
 
 updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
 updateAndBroadCast env items =
-  LBS.writeFile "shopping-list.json" (encode items)
+  LBS.writeFile shoppingListFile (encode items)
     >> writeChan (broadcastChan env) (asServerEvent items)
     >> return items
 
@@ -248,17 +306,12 @@ baseTemplate' content = do
       content
   where
 
-data Page404 = Page404 (Maybe Text)
+data Page404 = Page404 Text
 
 instance ToHtml Page404 where
   toHtml (Page404 mtext) = baseTemplate $ do
     h1_ "404"
-    p_ $ toHtml $ fromMaybe "Page not found" mtext
-  toHtmlRaw = toHtml
-
-instance (ToHtml a, ToHtml b) => ToHtml (Either a b) where
-  toHtml (Left a) = toHtml a
-  toHtml (Right b) = toHtml b
+    p_ $ toHtml $ mtext
   toHtmlRaw = toHtml
 
 navbar_ :: (Monad m) => HtmlT m ()
@@ -400,7 +453,7 @@ splitPage_ expenses =
         legend_ "Betalare"
         mapM_
           ( \p -> div_ [class_ "radio-group"] $ do
-              input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if p == head people then [checked_] else mempty)
+              input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if Just p == safeHead people then [checked_] else mempty)
               label_ [for_ (name p)] (toHtml p)
           )
           people
@@ -411,7 +464,7 @@ splitPage_ expenses =
             mapM_
               ( \p -> option_ [value_ (name p)] (toHtml p)
               )
-              (reverse people)
+              people
           span_ [class_ "form-comment"] "ska betala"
         div_ [class_ "debtor-form-group"] $ do
           input_ [type_ "number", id_ "amount", name_ "amount", value_ "50", autocomplete_ "off"]
@@ -458,29 +511,63 @@ instance ToHtml SplitPage where
   toHtml (SplitPage exps) = splitPage_ exps
   toHtmlRaw = toHtml
 
-data EditExpensePage = EditExpensePage {date :: Text}
+data EditExpensePage = EditExpensePage Expense Share
 
 instance ToHtml EditExpensePage where
-  toHtml (EditExpensePage date) = editExpensePage_ date
+  toHtml (EditExpensePage exp debtorShare) = editExpensePage_ exp debtorShare
   toHtmlRaw = toHtml
 
-editExpensePage_ :: (Monad m) => Text -> HtmlT m ()
-editExpensePage_ date = baseTemplate $ do
+editExpensePage_ :: (Monad m) => Expense -> Share -> HtmlT m ()
+editExpensePage_ exp debtorShare = baseTemplate $ do
   h1_ "Redigera utgift"
-  span_ $ toHtml $ "Datum: " <> date
+  form_ [class_ "gapped-form", id_ "split-form"] $ do
+    div_ [class_ "form-group"] $ do
+      label_ [for_ "rubric"] "Rubrik:"
+      input_ [type_ "text", id_ "rubric", name_ "rubric", value_ (exp.rubric)]
+    fieldset_ [class_ "radio-form-group"] $ do
+      legend_ "Betalare"
+      mapM_
+        ( \p -> div_ [class_ "radio-group"] $ do
+            input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if p == exp.paidBy then [checked_] else mempty)
+            label_ [for_ (name p)] (toHtml p)
+        )
+        (peopleOfExpense exp)
+    fieldset_ [class_ "debt-form-group"] $ do
+      legend_ "Skuld"
+      div_ [class_ "debtor-form-group"] $ do
+        select_ [name_ "debtor", value_ debtorShare.person.name] $ do
+          mapM_
+            ( \p -> option_ [value_ p.name] (toHtml p)
+            )
+            (peopleOfExpense exp)
+        span_ [class_ "form-comment"] "ska betala"
+      div_ [class_ "debtor-form-group"] $ do
+        input_ [type_ "number", id_ "amount", name_ "amount", value_ (text $ shareAmount debtorShare)]
+        select_ [autocomplete_ "off", name_ "share-type", value_ (T.pack $ show debtorShare)] $ do
+          option_ [value_ "percentage", selected_ "selected"] "%"
+          option_ [value_ "fixed"] "kr"
+        span_ [class_ "form-comment"] "av"
+      div_ [class_ "debtor-form-group"] $ do
+        input_ [type_ "number", id_ "total", name_ "total", min_ "0", value_ (text $ exp.total)]
+        span_ "kr"
+        span_ "*"
+    small_ "*Resten betalas av den andre."
+    div_ [id_ "edit-action-buttons"] $ do
+      button_ [type_ "submit", hxPatch_ ("/split/spara/" <> text exp.id), hxTarget_ "body"] "Spara"
+      button_ [type_ "button", hxDelete_ ("/split/ta-bort/" <> text exp.id), hxSwap_ "none"] "Ta bort"
 
 encodeDate :: (Show a) => a -> Text
 encodeDate = T.pack . filter isNumber . show
 
 transaction_ :: (Monad m) => Transaction -> HtmlT m ()
-transaction_ (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date})) = div_ [class_ "expense-container"] $ do
+transaction_ (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date, id = id'})) = div_ [class_ "expense-container"] $ do
   div_ [class_ "expense-info-container"] $ do
     h3_ [class_ "expense-title", title_ rubric] $ do
       toHtml rubric
     div_ [class_ "date-container"] $ do
       span_ $ toHtml $ formatDate date
       span_ [class_ "paid-by", style_ $ "background-color: " <> paidBy.color] $ toHtml $ show paidBy
-      a_ [class_ "edit-link", href_ $ "/split/redigera/" <> encodeDate date] "Redigera"
+      a_ [class_ "edit-link", href_ $ "/split/redigera/" <> text id'] "Redigera"
   div_ [class_ "expense-info-container no-shrink"] $ do
     span_ $ toHtml $ show total <> "kr"
     split_ exp
@@ -524,8 +611,8 @@ pieChart_ exp size =
         . foldl' (genColorText total) (0, [])
 
     genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
-    genColorText _ (sum', txt) (Percentage p sh) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
-    genColorText total (sum', txt) (Fixed p sh) = (sum' + toPercent sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + toPercent sh)])
+    genColorText _ (sum', txt) (Percentage p sh _) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
+    genColorText total (sum', txt) (Fixed p sh _) = (sum' + toPercent sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + toPercent sh)])
       where
         toPercent :: Amount -> Float
         toPercent = (* 100) . (/ total)
