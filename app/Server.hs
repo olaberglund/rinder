@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Server where
 
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
@@ -9,6 +11,7 @@ import Data.Binary.Builder (fromByteString, fromLazyByteString)
 import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
+import Data.Char (isNumber)
 import Data.Either (fromRight)
 import Data.List (foldl')
 import Data.Maybe (fromMaybe)
@@ -32,7 +35,7 @@ import Servant.Types.SourceT qualified as S
 import Splitvajs
 import System.Timeout (timeout)
 import Web.FormUrlEncoded (FromForm)
-import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, url)
+import Willys (Promotion, fetchProducts, fetchPromotions, runClientDefault, safeHead, url)
 import Willys qualified
 import Prelude hiding (exp, product)
 
@@ -71,7 +74,8 @@ data ShoppingApi as = ShoppingApi
 data SplitApi as = SplitApi
   { splitPageEP :: as :- Get '[HTML] SplitPage,
     newExpenseEP :: as :- "lagg-till" :> ReqBody '[FormUrlEncoded] ExpenseForm :> Post '[HTML] Transactions,
-    settleUpEP :: as :- "gor-upp" :> Post '[HTML] Transactions
+    settleUpEP :: as :- "gor-upp" :> Post '[HTML] Transactions,
+    editExpensePageEP :: as :- "redigera" :> Capture "date" Text :> Get '[HTML] (Either Page404 EditExpensePage)
   }
   deriving (Generic)
 
@@ -97,9 +101,21 @@ server env =
         SplitApi
           { splitPageEP = splitPageH,
             newExpenseEP = newExpenseH,
-            settleUpEP = settleUpH
+            settleUpEP = settleUpH,
+            editExpensePageEP = editExpensePageH
           }
     }
+
+editExpensePageH :: Text -> Handler (Either Page404 EditExpensePage)
+editExpensePageH encodedDate = liftIO $ do
+  res <- BS.readFile "transactions.json"
+  case eitherDecodeStrict res of
+    Right (ts :: [Transaction]) -> do
+      let expenses = [exp | ExpenseTransaction exp@(Expense {date = d}) <- ts, encodeDate d == encodedDate]
+      case safeHead expenses of
+        Just (Expense {date = d}) -> return (Right $ EditExpensePage $ formatDate d)
+        Nothing -> return (Left (Page404 (Just "Ingen sådan utgift hittades")))
+    Left err -> print err >> return (Left (Page404 Nothing))
 
 settleUpH :: Handler Transactions
 settleUpH = liftIO $ do
@@ -212,23 +228,38 @@ productListH attributes search = liftIO $ do
     Right products -> return $ ProductSearchList attributes products "Sökresultat" "searched-products"
 
 baseTemplate :: (Monad m) => HtmlT m b -> HtmlT m b
-baseTemplate content = do
+baseTemplate content = baseTemplate' (navbar_ >> content)
+
+baseTemplate' :: (Monad m) => HtmlT m b -> HtmlT m b
+baseTemplate' content = do
   doctype_
   html_ $ do
     head_ $ do
       useHtmx
       useHtmxExtension "json-enc"
       useHtmxExtension "sse"
-      link_ [rel_ "stylesheet", href_ ("static/styles.css")]
-      link_ [rel_ "icon", type_ "image/png", href_ "static/images/favicon.ico"]
+      link_ [rel_ "stylesheet", href_ ("/static/styles.css")]
+      link_ [rel_ "icon", type_ "image/png", href_ "/static/images/favicon.ico"]
       meta_ [charset_ "utf-8"]
       meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
-      script_ [defer_ "true", type_ "text/javascript", src_ "static/scripts.js"] ("" :: Text)
+      script_ [defer_ "true", type_ "text/javascript", src_ "/static/scripts.js"] ("" :: Text)
       title_ "Olas page"
     body_ $ do
-      navbar_
       content
   where
+
+data Page404 = Page404 (Maybe Text)
+
+instance ToHtml Page404 where
+  toHtml (Page404 mtext) = baseTemplate $ do
+    h1_ "404"
+    p_ $ toHtml $ fromMaybe "Page not found" mtext
+  toHtmlRaw = toHtml
+
+instance (ToHtml a, ToHtml b) => ToHtml (Either a b) where
+  toHtml (Left a) = toHtml a
+  toHtml (Right b) = toHtml b
+  toHtmlRaw = toHtml
 
 navbar_ :: (Monad m) => HtmlT m ()
 navbar_ = nav_ $ ul_ $ do
@@ -427,13 +458,29 @@ instance ToHtml SplitPage where
   toHtml (SplitPage exps) = splitPage_ exps
   toHtmlRaw = toHtml
 
+data EditExpensePage = EditExpensePage {date :: Text}
+
+instance ToHtml EditExpensePage where
+  toHtml (EditExpensePage date) = editExpensePage_ date
+  toHtmlRaw = toHtml
+
+editExpensePage_ :: (Monad m) => Text -> HtmlT m ()
+editExpensePage_ date = baseTemplate $ do
+  h1_ "Redigera utgift"
+  span_ $ toHtml $ "Datum: " <> date
+
+encodeDate :: (Show a) => a -> Text
+encodeDate = T.pack . filter isNumber . show
+
 transaction_ :: (Monad m) => Transaction -> HtmlT m ()
 transaction_ (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date})) = div_ [class_ "expense-container"] $ do
   div_ [class_ "expense-info-container"] $ do
-    h3_ [class_ "expense-title", title_ rubric] $ toHtml rubric
+    h3_ [class_ "expense-title", title_ rubric] $ do
+      toHtml rubric
     div_ [class_ "date-container"] $ do
       span_ $ toHtml $ formatDate date
       span_ [class_ "paid-by", style_ $ "background-color: " <> paidBy.color] $ toHtml $ show paidBy
+      a_ [class_ "edit-link", href_ $ "/split/redigera/" <> encodeDate date] "Redigera"
   div_ [class_ "expense-info-container no-shrink"] $ do
     span_ $ toHtml $ show total <> "kr"
     split_ exp
@@ -445,6 +492,8 @@ transaction_ (SettlementTransaction (Settlement {from, to, amount, date})) = div
       span_ [class_ "paid-by", style_ $ "background-color: " <> from.color] $ toHtml $ show from
   div_ [class_ "expense-info-container"] $ do
     span_ $ toHtml $ show amount <> "kr"
+    -- right arrow
+    i_ [class_ "settle-icons"] "💸"
 
 split_ :: (Monad m) => Expense -> HtmlT m ()
 split_ expense = div_ [class_ "split-container"] $ do
