@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Server where
 
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
@@ -326,44 +328,19 @@ data ProductSearchList = ProductSearchList (Willys.Product -> [Attribute]) [Will
   deriving (Generic)
 
 instance ToHtml ProductSearchList where
-  toHtml (ProductSearchList attributes products rubric listId) = productSearchList_ attributes products rubric listId
   toHtmlRaw = toHtml
-
-productSearchList_ :: (Monad m) => (Willys.Product -> [Attribute]) -> [Willys.Product] -> Text -> Text -> HtmlT m ()
-productSearchList_ attributes products rubric listId = do
-  fieldset_ [class_ "products", id_ listId] $ do
-    legend_ (toHtml rubric)
-    mapM_
-      ( \p -> div_ ([class_ "product-container", title_ p.name] <> (attributes p)) $ do
-          img_ [class_ "product", src_ p.image.url]
-          div_ [class_ "product-details"] $ do
-            span_ [class_ "product-name"] $ toHtml p.name
-            span_ [class_ "product-promo"] $ toHtml $ Willys.getPrice p
-            span_ [class_ "product-save"] $ toHtml $ fromMaybe "" $ Willys.getSavePrice p
-      )
-      products
-
-shoppingPage_ :: (Monad m) => [Willys.Product] -> [Promotion] -> Maybe [ShoppingItem] -> HtmlT m ()
-shoppingPage_ products promotions shoppingList = baseTemplate $ do
-  h1_ "Veckans inköpslista"
-  p_ "Sök och lägg till produkter till inköpslistan."
-  form_ [class_ "gapped-form"] $
-    productSearch_ toBeReplaced "/inkop/produkter" products
-  toHtml $ ProductSearchList addToShoppingList (map (.product) promotions) "Erbjudanden" "promotion-products"
-  div_ [class_ "shopping-list"] $ do
-    h2_ "Din inköpslista"
-    div_ [class_ "shopping-list-buttons"] $ do
-      button_ [class_ "remove-all-button", type_ "button", hxDelete_ "/inkop/ta-bort-alla", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort alla"
-      button_ [class_ "remove-checked-button", type_ "button", hxDelete_ "/inkop/ta-bort", hxTarget_ "#shopping-list", hxSwap_ "outerHTML"] "Ta bort markerade"
-    case shoppingList of
-      Nothing -> p_ "Något gick fel..."
-      Just list -> toHtml list
-  button_
-    [ class_ "scroll-to-bottom",
-      type_ "button",
-      onclick_ "document.querySelector('.shopping-list').scrollIntoView({behavior: 'smooth'});"
-    ]
-    "Till listan"
+  toHtml (ProductSearchList attributes products rubric listId) =
+    fieldset_ [class_ "products", id_ listId] $ do
+      legend_ (toHtml rubric)
+      mapM_
+        ( \p -> div_ ([class_ "product-container", title_ p.name] <> (attributes p)) $ do
+            img_ [class_ "product", src_ p.image.url]
+            div_ [class_ "product-details"] $ do
+              span_ [class_ "product-name"] $ toHtml p.name
+              span_ [class_ "product-promo"] $ toHtml $ Willys.getPrice p
+              span_ [class_ "product-save"] $ toHtml $ fromMaybe "" $ Willys.getSavePrice p
+        )
+        products
 
 addToShoppingList :: Willys.Product -> [Attribute]
 addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", hxSwap_ "outerHTML", hxExt_ "json-enc", hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)]
@@ -371,13 +348,43 @@ addToShoppingList p = [hxPost_ "/inkop/lagg-till", hxTarget_ "#shopping-list", h
 data ShoppingPage = ShoppingPage ![Willys.Product] ![Promotion] !(Maybe [ShoppingItem])
 
 instance ToHtml ShoppingPage where
-  toHtml (ShoppingPage products promotions list) = shoppingPage_ products promotions list
-
+  toHtml (ShoppingPage products promotions shoppingList) = baseTemplate $ do
+    h1_ "Veckans inköpslista"
+    div_ [class_ "tabs"] $ do
+      button_ [id_ "default-open", class_ "tab", onclick_ "openTab(event, 'shopping-list-container')"] "Inköpslista"
+      button_ [class_ "tab", onclick_ "openTab(event, 'promotions-container')"] "Erbjudanden"
+      button_ [class_ "tab", onclick_ "openTab(event, 'product-search-container')"] "Sök"
+    div_ [id_ "product-search-container", class_ "tabcontent"] $ do
+      h2_ "Sök och lägg till produkter"
+      form_ [class_ "gapped-form"] $
+        productSearch_ toBeReplaced "/inkop/produkter" products
+    div_ [id_ "promotions-container", class_ "tabcontent"] $ do
+      h2_ "Veckans erbjudanden"
+      toHtml $
+        ProductSearchList addToShoppingList (map (.product) promotions) "Erbjudanden" "promotion-products"
+    div_ [id_ "shopping-list-container", class_ "tabcontent"] $ do
+      h2_ "Din inköpslista"
+      div_ [class_ "shopping-list-buttons"] $ do
+        button_
+          [ class_ "remove-all-button",
+            type_ "button",
+            hxDelete_ "/inkop/ta-bort-alla",
+            hxTarget_ "#shopping-list",
+            hxSwap_ "outerHTML"
+          ]
+          "Ta bort alla"
+        button_
+          [ class_ "remove-checked-button",
+            type_ "button",
+            hxDelete_ "/inkop/ta-bort",
+            hxTarget_ "#shopping-list",
+            hxSwap_ "outerHTML"
+          ]
+          "Ta bort markerade"
+      case shoppingList of
+        Nothing -> p_ "Något gick fel..."
+        Just list -> toHtml list
   toHtmlRaw = toHtml
-
-shoppingList_ :: (Monad m) => [ShoppingItem] -> HtmlT m ()
-shoppingList_ items = div_ [id_ "shopping-list", hxExt_ "sse", hxSseConnect_ "/inkop/sse", hxSseSwap_ "message"] $ do
-  mapM_ shoppingItem_ items
 
 data Checkbox = Checked | Unchecked
   deriving (Generic, Eq, Show)
@@ -392,8 +399,9 @@ instance ToHtml ShoppingItem where
   toHtmlRaw = toHtml
 
 instance ToHtml [ShoppingItem] where
-  toHtml shoppingList = shoppingList_ shoppingList
   toHtmlRaw = toHtml
+  toHtml items = div_ [id_ "shopping-list", hxExt_ "sse", hxSseConnect_ "/inkop/sse", hxSseSwap_ "message"] $ do
+    mapM_ shoppingItem_ items
 
 shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
 shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
@@ -443,9 +451,11 @@ hxSseConnect_ = makeAttribute "sse-connect"
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = makeAttribute "sse-swap"
 
-splitPage_ :: (Monad m) => [Transaction] -> HtmlT m ()
-splitPage_ expenses =
-  baseTemplate $ do
+data SplitPage = SplitPage [Transaction]
+
+instance ToHtml SplitPage where
+  toHtmlRaw = toHtml
+  toHtml (SplitPage expenses) = baseTemplate $ do
     h1_ "Splitvajs"
     fieldset_ $ do
       legend_ "Lägg till en utgift"
@@ -482,29 +492,26 @@ splitPage_ expenses =
             span_ "*"
         small_ "*Resten betalas av den andre."
         button_ [type_ "submit", hxPost_ "/split/lagg-till", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Lägg till"
-    transactions_ expenses
-
-transactions_ :: (Monad m) => [Transaction] -> HtmlT m ()
-transactions_ transactions = div_ [id_ "tally-expenses-container"] $ do
-  h2_ "Skulder"
-  if null settles
-    then p_ "Inga skulder att visa."
-    else do
-      div_ [class_ "tally-container"] $ mapM_ iou_ settles
-      button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
-  h2_ "Utgifter"
-  if null transactions
-    then p_ "Inga utgifter att visa."
-    else div_ [class_ "expenses-container"] $ do
-      mapM_ transaction_ transactions
-  where
-    settles = debtsToList $ simplifiedDebts transactions
-
-data Transactions = Transactions [Transaction]
+    toHtml (Transactions expenses)
 
 instance ToHtml Transactions where
-  toHtml (Transactions transactions) = transactions_ transactions
   toHtmlRaw = toHtml
+  toHtml (Transactions transactions) = div_ [id_ "tally-expenses-container"] $ do
+    h2_ "Skulder"
+    if null settles
+      then p_ "Inga skulder att visa."
+      else do
+        div_ [class_ "tally-container"] $ mapM_ iou_ settles
+        button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
+    h2_ "Utgifter"
+    if null transactions
+      then p_ "Inga utgifter att visa."
+      else div_ [class_ "expenses-container"] $ do
+        mapM_ toHtml transactions
+    where
+      settles = debtsToList $ simplifiedDebts transactions
+
+data Transactions = Transactions [Transaction]
 
 iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
 iou_ (p, ious') = do
@@ -514,88 +521,80 @@ iou_ (p, ious') = do
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
 debtItem_ (p, amount) = toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
 
-data SplitPage = SplitPage [Transaction]
-
-instance ToHtml SplitPage where
-  toHtml (SplitPage exps) = splitPage_ exps
-  toHtmlRaw = toHtml
-
 data EditExpensePage = EditExpensePage Expense Share (Maybe FeedbackMessage)
 
 instance ToHtml EditExpensePage where
-  toHtml (EditExpensePage exp debtorShare message) = editExpensePage_ exp debtorShare message
   toHtmlRaw = toHtml
-
-editExpensePage_ :: (Monad m) => Expense -> Share -> Maybe FeedbackMessage -> HtmlT m ()
-editExpensePage_ exp debtorShare feedback = baseTemplate $ do
-  h1_ "Redigera utgift"
-  form_ [class_ "gapped-form", id_ "split-form", autocomplete_ "off"] $ do
-    div_ [class_ "form-group"] $ do
-      label_ [for_ "rubric"] "Rubrik:"
-      input_ [type_ "text", id_ "rubric", name_ "rubric", value_ (exp.rubric)]
-    fieldset_ [class_ "radio-form-group"] $ do
-      legend_ "Betalare"
-      mapM_
-        ( \p -> div_ [class_ "radio-group"] $ do
-            input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if p == exp.paidBy then [checked_] else mempty)
-            label_ [for_ (name p)] (toHtml p)
-        )
-        (peopleOfExpense exp)
-    fieldset_ [class_ "debt-form-group"] $ do
-      legend_ "Skuld"
-      div_ [class_ "debtor-form-group"] $ do
-        select_ [name_ "debtor"] $ do
-          mapM_
-            ( \p -> flip option_ (toHtml p) $ [value_ p.name] <> (if p == debtorShare.person then [selected_ "selected"] else [])
-            )
-            (peopleOfExpense exp)
-        span_ [class_ "form-comment"] "ska betala"
-      div_ [class_ "debtor-form-group"] $ do
-        input_ [type_ "number", id_ "amount", name_ "amount", value_ (text $ shareAmount debtorShare)]
-        select_ [name_ "share-type", value_ (text debtorShare.shareType)] $ do
-          mapM_
-            ( \shareType ->
-                option_
-                  ([value_ (text shareType)] <> if shareType == debtorShare.shareType then [selected_ "selected"] else [])
-                  (toHtml shareType)
-            )
-            [Percentage, Fixed]
-        span_ [class_ "form-comment"] "av"
-      div_ [class_ "debtor-form-group"] $ do
-        input_ [type_ "number", id_ "total", name_ "total", min_ "0", value_ (text $ exp.total)]
-        span_ "kr"
-        span_ "*"
-    small_ "*Resten betalas av den andre."
-    div_ [id_ "edit-action-buttons"] $ do
-      button_ [type_ "submit", hxPatch_ ("/split/spara/" <> text exp.id), hxTarget_ "body"] "Spara"
-      button_ [type_ "button", hxDelete_ ("/split/ta-bort/" <> text exp.id), hxSwap_ "none"] "Ta bort"
-    maybe mempty toHtml feedback
+  toHtml (EditExpensePage exp debtorShare message) = baseTemplate $ do
+    h1_ "Redigera utgift"
+    form_ [class_ "gapped-form", id_ "split-form", autocomplete_ "off"] $ do
+      div_ [class_ "form-group"] $ do
+        label_ [for_ "rubric"] "Rubrik:"
+        input_ [type_ "text", id_ "rubric", name_ "rubric", value_ (exp.rubric)]
+      fieldset_ [class_ "radio-form-group"] $ do
+        legend_ "Betalare"
+        mapM_
+          ( \p -> div_ [class_ "radio-group"] $ do
+              input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if p == exp.paidBy then [checked_] else mempty)
+              label_ [for_ (name p)] (toHtml p)
+          )
+          (peopleOfExpense exp)
+      fieldset_ [class_ "debt-form-group"] $ do
+        legend_ "Skuld"
+        div_ [class_ "debtor-form-group"] $ do
+          select_ [name_ "debtor"] $ do
+            mapM_
+              ( \p -> flip option_ (toHtml p) $ [value_ p.name] <> (if p == debtorShare.person then [selected_ "selected"] else [])
+              )
+              (peopleOfExpense exp)
+          span_ [class_ "form-comment"] "ska betala"
+        div_ [class_ "debtor-form-group"] $ do
+          input_ [type_ "number", id_ "amount", name_ "amount", value_ (text $ shareAmount debtorShare)]
+          select_ [name_ "share-type", value_ (text debtorShare.shareType)] $ do
+            mapM_
+              ( \shareType ->
+                  option_
+                    ([value_ (text shareType)] <> if shareType == debtorShare.shareType then [selected_ "selected"] else [])
+                    (toHtml shareType)
+              )
+              [Percentage, Fixed]
+          span_ [class_ "form-comment"] "av"
+        div_ [class_ "debtor-form-group"] $ do
+          input_ [type_ "number", id_ "total", name_ "total", min_ "0", value_ (text $ exp.total)]
+          span_ "kr"
+          span_ "*"
+      small_ "*Resten betalas av den andre."
+      div_ [id_ "edit-action-buttons"] $ do
+        button_ [type_ "submit", hxPatch_ ("/split/spara/" <> text exp.id), hxTarget_ "body"] "Spara"
+        button_ [type_ "button", hxDelete_ ("/split/ta-bort/" <> text exp.id), hxSwap_ "none"] "Ta bort"
+      maybe mempty toHtml message
 
 encodeDate :: (Show a) => a -> Text
 encodeDate = T.pack . filter isNumber . show
 
-transaction_ :: (Monad m) => Transaction -> HtmlT m ()
-transaction_ (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date, id = id'})) = div_ [class_ "expense-container"] $ do
-  div_ [class_ "expense-info-container"] $ do
-    h3_ [class_ "expense-title", title_ rubric] $ do
-      toHtml rubric
-    div_ [class_ "date-container"] $ do
-      span_ $ toHtml $ formatDate date
-      span_ [class_ "paid-by", style_ $ "background-color: " <> paidBy.color] $ toHtml $ show paidBy
-      a_ [class_ "edit-link", href_ $ "/split/redigera/" <> text id'] "Redigera"
-  div_ [class_ "expense-info-container no-shrink"] $ do
-    span_ $ toHtml $ show total <> "kr"
-    split_ exp
-transaction_ (SettlementTransaction (Settlement {from, to, amount, date})) = div_ [class_ "expense-container"] $ do
-  div_ [class_ "expense-info-container"] $ do
-    h3_ [class_ "expense-title", title_ $ "Swish till " <> to.name] $ "Swish till " <> toHtml to
-    div_ [class_ "date-container"] $ do
-      span_ $ toHtml $ formatDate date
-      span_ [class_ "paid-by", style_ $ "background-color: " <> from.color] $ toHtml $ show from
-  div_ [class_ "expense-info-container"] $ do
-    span_ $ toHtml $ show amount <> "kr"
-    -- right arrow
-    i_ [class_ "settle-icons"] "💸"
+instance ToHtml Transaction where
+  toHtmlRaw = toHtml
+  toHtml (ExpenseTransaction exp@(Expense {paidBy, total, rubric, date, id = id'})) = div_ [class_ "expense-container"] $ do
+    div_ [class_ "expense-info-container"] $ do
+      h3_ [class_ "expense-title", title_ rubric] $ do
+        toHtml rubric
+      div_ [class_ "date-container"] $ do
+        span_ $ toHtml $ formatDate date
+        span_ [class_ "paid-by", style_ $ "background-color: " <> paidBy.color] $ toHtml $ show paidBy
+        a_ [class_ "edit-link", href_ $ "/split/redigera/" <> text id'] "Redigera"
+    div_ [class_ "expense-info-container no-shrink"] $ do
+      span_ $ toHtml $ show total <> "kr"
+      split_ exp
+  toHtml (SettlementTransaction (Settlement {from, to, amount, date})) = div_ [class_ "expense-container"] $ do
+    div_ [class_ "expense-info-container"] $ do
+      h3_ [class_ "expense-title", title_ $ "Swish till " <> to.name] $ "Swish till " <> toHtml to
+      div_ [class_ "date-container"] $ do
+        span_ $ toHtml $ formatDate date
+        span_ [class_ "paid-by", style_ $ "background-color: " <> from.color] $ toHtml $ show from
+    div_ [class_ "expense-info-container"] $ do
+      span_ $ toHtml $ show amount <> "kr"
+      -- right arrow
+      i_ [class_ "settle-icons"] "💸"
 
 split_ :: (Monad m) => Expense -> HtmlT m ()
 split_ expense = div_ [class_ "split-container"] $ do
