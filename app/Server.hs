@@ -24,6 +24,7 @@ import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPatch_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
+import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
 import Numeric (showFFloat)
 import Servant
@@ -137,7 +138,7 @@ removeExpenseH uuid = do
     Right ts -> do
       let newTs = filter (\t -> case t of ExpenseTransaction exp -> exp.id /= uuid; _ -> True) ts
       liftIO $ LBS.writeFile transactionsFile (encode newTs)
-      redirect "/split"
+      hxRedirect "/split"
     Left err -> liftIO (print err) >> throwError err500
 
 saveExpenseH :: UUID -> ExpenseForm -> Handler EditExpensePage
@@ -268,8 +269,11 @@ addProductH env product' = liftIO $ do
        in updateAndBroadCast env newList
     Left err -> print err >> return []
 
+hxRedirect :: BS.ByteString -> Handler a
+hxRedirect url = throwError err303 {errHeaders = [("HX-Redirect", url)]}
+
 redirect :: BS.ByteString -> Handler a
-redirect url = throwError err303 {errHeaders = [("HX-Redirect", url)]}
+redirect url = throwError err303 {errHeaders = [(hLocation, url)]}
 
 updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
 updateAndBroadCast env items =
@@ -300,7 +304,7 @@ baseTemplate' content = do
       meta_ [charset_ "utf-8"]
       meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1"]
       script_ [defer_ "true", type_ "text/javascript", src_ "/static/scripts.js"] ("" :: Text)
-      title_ "Olas page"
+      title_ "Hörlund"
     body_ $ do
       content
   where
@@ -445,7 +449,7 @@ splitPage_ expenses =
     h1_ "Splitvajs"
     fieldset_ $ do
       legend_ "Lägg till en utgift"
-      form_ [class_ "gapped-form", id_ "split-form"] $ do
+      form_ [class_ "gapped-form", id_ "split-form", autocomplete_ "off"] $ do
         div_ [class_ "form-group"] $ do
           label_ [for_ "rubric"] "Rubrik:"
           input_ [type_ "text", id_ "rubric", name_ "rubric"]
@@ -462,18 +466,18 @@ splitPage_ expenses =
           div_ [class_ "debtor-form-group"] $ do
             select_ [name_ "debtor"] $ do
               mapM_
-                ( \p -> option_ [value_ (name p)] (toHtml p)
+                ( \p -> option_ ([value_ (name p)] <> if p.name == "Ola" then [selected_ "selected"] else mempty) (toHtml p)
                 )
                 people
             span_ [class_ "form-comment"] "ska betala"
           div_ [class_ "debtor-form-group"] $ do
-            input_ [type_ "number", id_ "amount", name_ "amount", value_ "50", autocomplete_ "off"]
-            select_ [autocomplete_ "off", name_ "share-type"] $ do
+            input_ [type_ "number", id_ "amount", name_ "amount", value_ "50"]
+            select_ [name_ "share-type"] $ do
               option_ [value_ "percentage", selected_ "selected"] "%"
-              option_ [value_ "fixed", autocomplete_ "off"] "kr"
+              option_ [value_ "fixed"] "kr"
             span_ [class_ "form-comment"] "av"
           div_ [class_ "debtor-form-group"] $ do
-            input_ [type_ "number", id_ "total", name_ "total", min_ "0", autocomplete_ "off"]
+            input_ [type_ "number", id_ "total", name_ "total", min_ "0"]
             span_ "kr"
             span_ "*"
         small_ "*Resten betalas av den andre."

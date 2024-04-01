@@ -174,9 +174,6 @@ iou (SettlementTransaction (Settlement {from, to, amount})) = [IOU to from amoun
 settlements :: TimeZone -> UTCTime -> [Transaction] -> [Settlement]
 settlements tz utc ts = [Settlement p creditor amount (utcToLocalTime tz utc) | (p, debts) <- debtsToList (simplifiedDebts ts), (creditor, amount) <- debts]
 
-data Simplified a = Simplified a
-
--- | show localtime as "2024-03-12 21:57"
 formatDate :: LocalTime -> Text
 formatDate = T.pack . formatTime defaultTimeLocale "%F - %R"
 
