@@ -443,55 +443,58 @@ splitPage_ :: (Monad m) => [Transaction] -> HtmlT m ()
 splitPage_ expenses =
   baseTemplate $ do
     h1_ "Splitvajs"
-    h2_ "Lägg till en utgift"
-    form_ [class_ "gapped-form", id_ "split-form"] $ do
-      div_ [class_ "form-group"] $ do
-        label_ [for_ "rubric"] "Rubrik:"
-        input_ [type_ "text", id_ "rubric", name_ "rubric"]
-      fieldset_ [class_ "radio-form-group"] $ do
-        legend_ "Betalare"
-        mapM_
-          ( \p -> div_ [class_ "radio-group"] $ do
-              input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if Just p == safeHead people then [checked_] else mempty)
-              label_ [for_ (name p)] (toHtml p)
-          )
-          people
-      fieldset_ [class_ "debt-form-group"] $ do
-        legend_ "Skuld"
-        div_ [class_ "debtor-form-group"] $ do
-          select_ [name_ "debtor"] $ do
-            mapM_
-              ( \p -> option_ [value_ (name p)] (toHtml p)
-              )
-              people
-          span_ [class_ "form-comment"] "ska betala"
-        div_ [class_ "debtor-form-group"] $ do
-          input_ [type_ "number", id_ "amount", name_ "amount", value_ "50", autocomplete_ "off"]
-          select_ [autocomplete_ "off", name_ "share-type"] $ do
-            option_ [value_ "percentage", selected_ "selected"] "%"
-            option_ [value_ "fixed", autocomplete_ "off"] "kr"
-          span_ [class_ "form-comment"] "av"
-        div_ [class_ "debtor-form-group"] $ do
-          input_ [type_ "number", id_ "total", name_ "total", min_ "0", autocomplete_ "off"]
-          span_ "kr"
-          span_ "*"
-      small_ "*Resten betalas av den andre."
-      button_ [type_ "submit", hxPost_ "/split/lagg-till", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Lägg till"
+    fieldset_ $ do
+      legend_ "Lägg till en utgift"
+      form_ [class_ "gapped-form", id_ "split-form"] $ do
+        div_ [class_ "form-group"] $ do
+          label_ [for_ "rubric"] "Rubrik:"
+          input_ [type_ "text", id_ "rubric", name_ "rubric"]
+        fieldset_ [class_ "radio-form-group"] $ do
+          legend_ "Betalare"
+          mapM_
+            ( \p -> div_ [class_ "radio-group"] $ do
+                input_ $ [type_ "radio", id_ (name p), name_ "paidBy", value_ (name p)] <> (if Just p == safeHead people then [checked_] else mempty)
+                label_ [for_ (name p)] (toHtml p)
+            )
+            people
+        fieldset_ [class_ "debt-form-group"] $ do
+          legend_ "Skuld"
+          div_ [class_ "debtor-form-group"] $ do
+            select_ [name_ "debtor"] $ do
+              mapM_
+                ( \p -> option_ [value_ (name p)] (toHtml p)
+                )
+                people
+            span_ [class_ "form-comment"] "ska betala"
+          div_ [class_ "debtor-form-group"] $ do
+            input_ [type_ "number", id_ "amount", name_ "amount", value_ "50", autocomplete_ "off"]
+            select_ [autocomplete_ "off", name_ "share-type"] $ do
+              option_ [value_ "percentage", selected_ "selected"] "%"
+              option_ [value_ "fixed", autocomplete_ "off"] "kr"
+            span_ [class_ "form-comment"] "av"
+          div_ [class_ "debtor-form-group"] $ do
+            input_ [type_ "number", id_ "total", name_ "total", min_ "0", autocomplete_ "off"]
+            span_ "kr"
+            span_ "*"
+        small_ "*Resten betalas av den andre."
+        button_ [type_ "submit", hxPost_ "/split/lagg-till", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Lägg till"
     transactions_ expenses
 
 transactions_ :: (Monad m) => [Transaction] -> HtmlT m ()
 transactions_ transactions = div_ [id_ "tally-expenses-container"] $ do
   h2_ "Skulder"
-  if null transactions
+  if null settles
     then p_ "Inga skulder att visa."
     else do
-      div_ [class_ "tally-container"] $ mapM_ iou_ $ debtsToList $ simplifiedDebts transactions
+      div_ [class_ "tally-container"] $ mapM_ iou_ settles
       button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
   h2_ "Utgifter"
   if null transactions
     then p_ "Inga utgifter att visa."
     else div_ [class_ "expenses-container"] $ do
       mapM_ transaction_ transactions
+  where
+    settles = debtsToList $ simplifiedDebts transactions
 
 data Transactions = Transactions [Transaction]
 
@@ -500,13 +503,12 @@ instance ToHtml Transactions where
   toHtmlRaw = toHtml
 
 iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
-iou_ (p, ious') = div_ [class_ "debt-container"] $ do
-  h3_ [class_ "debt-title", style_ $ "background-color: " <> p.color] $ toHtml p.name <> " är skyldig:"
-  ul_ $
-    mapM_ debtItem_ ious'
+iou_ (p, ious') = do
+  span_ [class_ "creditor-name", style_ $ "background-color: " <> p.color] $ toHtml p.name <> " är skyldig:"
+  mapM_ debtItem_ ious'
 
 debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
-debtItem_ (p, amount) = li_ $ toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
+debtItem_ (p, amount) = toHtml $ p.name <> ": " <> T.pack (showFFloat (Just 2) amount "kr")
 
 data SplitPage = SplitPage [Transaction]
 
