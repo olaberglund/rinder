@@ -396,3 +396,29 @@ input[type="radio"] {
   display: flex;
   gap: 20px;
 }
+
+.toast-success {
+  background-color: #4caf50;
+}
+
+.toast-fail {
+  background-color: #f44336;
+}
+
+.toast {
+  color: white;
+  padding: 16px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  animation: fadeOut 3s forwards;
+}
+
+@keyframes fadeOut {
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}

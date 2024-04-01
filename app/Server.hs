@@ -24,7 +24,6 @@ import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx (hxDelete_, hxExt_, hxParams_, hxPatch_, hxPost_, hxSwap_, hxTarget_, hxVals_, useHtmx, useHtmxExtension)
-import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
 import Numeric (showFFloat)
 import Servant
@@ -86,8 +85,8 @@ data Feedback = Success | Failure
 data FeedbackMessage = FeedbackMessage Feedback Text
 
 instance ToHtml FeedbackMessage where
-  toHtml (FeedbackMessage Success msg) = span_ [class_ "toast-sucess"] $ toHtml msg
-  toHtml (FeedbackMessage Failure msg) = span_ [class_ "toast-fail"] $ toHtml msg
+  toHtml (FeedbackMessage Success msg) = span_ [classes_ ["toast", "toast-success"]] $ toHtml msg
+  toHtml (FeedbackMessage Failure msg) = span_ [classes_ ["toast", "toast-fail"]] $ toHtml msg
   toHtmlRaw = toHtml
 
 app :: Env -> Application
@@ -150,7 +149,7 @@ saveExpenseH uuid form = do
       liftIO $ LBS.writeFile transactionsFile (encode newTs)
       let mexp = findExpense uuid newTs
       case (mexp, mexp >>= singleDebtor) of
-        (Just exp, Just debtor) -> return $ EditExpensePage exp debtor
+        (Just exp, Just debtor) -> return $ EditExpensePage exp debtor (Just (FeedbackMessage Success "Utgift sparad"))
         _ -> throwError $ err404' (Just "Ingen sådan utgift hittades")
     Left err -> liftIO (print err) >> throwError err500
   where
@@ -169,7 +168,7 @@ editExpensePageH uuid = do
       let expense = findExpense uuid ts
       case expense of
         Just exp -> case singleDebtor exp of
-          Just share -> return $ EditExpensePage exp share
+          Just share -> return $ EditExpensePage exp share Nothing
           Nothing -> throwError $ err404' (Just "Just nu stöds inte redigering av utgifter med fler deltagare än två")
         Nothing -> throwError $ err404' (Just "Ingen sådan utgift hittades")
     Left err -> liftIO (print err) >> throwError err500
@@ -270,7 +269,7 @@ addProductH env product' = liftIO $ do
     Left err -> print err >> return []
 
 redirect :: BS.ByteString -> Handler a
-redirect url = throwError err303 {errHeaders = [(hLocation, url), ("HX-Redirect", "http://localhost:1234" <> url)]}
+redirect url = throwError err303 {errHeaders = [("HX-Redirect", url)]}
 
 updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
 updateAndBroadCast env items =
@@ -483,12 +482,16 @@ splitPage_ expenses =
 transactions_ :: (Monad m) => [Transaction] -> HtmlT m ()
 transactions_ transactions = div_ [id_ "tally-expenses-container"] $ do
   h2_ "Skulder"
-  div_ [class_ "tally-container"] $ do
-    mapM_ iou_ $ debtsToList $ simplifiedDebts transactions
-  button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
+  if null transactions
+    then p_ "Inga skulder att visa."
+    else do
+      div_ [class_ "tally-container"] $ mapM_ iou_ $ debtsToList $ simplifiedDebts transactions
+      button_ [type_ "submit", hxPost_ "/split/gor-upp", hxTarget_ "#tally-expenses-container", hxSwap_ "outerHTML"] "Gör upp"
   h2_ "Utgifter"
-  div_ [class_ "expenses-container"] $ do
-    mapM_ transaction_ transactions
+  if null transactions
+    then p_ "Inga utgifter att visa."
+    else div_ [class_ "expenses-container"] $ do
+      mapM_ transaction_ transactions
 
 data Transactions = Transactions [Transaction]
 
@@ -511,16 +514,16 @@ instance ToHtml SplitPage where
   toHtml (SplitPage exps) = splitPage_ exps
   toHtmlRaw = toHtml
 
-data EditExpensePage = EditExpensePage Expense Share
+data EditExpensePage = EditExpensePage Expense Share (Maybe FeedbackMessage)
 
 instance ToHtml EditExpensePage where
-  toHtml (EditExpensePage exp debtorShare) = editExpensePage_ exp debtorShare
+  toHtml (EditExpensePage exp debtorShare message) = editExpensePage_ exp debtorShare message
   toHtmlRaw = toHtml
 
-editExpensePage_ :: (Monad m) => Expense -> Share -> HtmlT m ()
-editExpensePage_ exp debtorShare = baseTemplate $ do
+editExpensePage_ :: (Monad m) => Expense -> Share -> Maybe FeedbackMessage -> HtmlT m ()
+editExpensePage_ exp debtorShare feedback = baseTemplate $ do
   h1_ "Redigera utgift"
-  form_ [class_ "gapped-form", id_ "split-form"] $ do
+  form_ [class_ "gapped-form", id_ "split-form", autocomplete_ "off"] $ do
     div_ [class_ "form-group"] $ do
       label_ [for_ "rubric"] "Rubrik:"
       input_ [type_ "text", id_ "rubric", name_ "rubric", value_ (exp.rubric)]
@@ -535,17 +538,22 @@ editExpensePage_ exp debtorShare = baseTemplate $ do
     fieldset_ [class_ "debt-form-group"] $ do
       legend_ "Skuld"
       div_ [class_ "debtor-form-group"] $ do
-        select_ [name_ "debtor", value_ debtorShare.person.name] $ do
+        select_ [name_ "debtor"] $ do
           mapM_
-            ( \p -> option_ [value_ p.name] (toHtml p)
+            ( \p -> flip option_ (toHtml p) $ [value_ p.name] <> (if p == debtorShare.person then [selected_ "selected"] else [])
             )
             (peopleOfExpense exp)
         span_ [class_ "form-comment"] "ska betala"
       div_ [class_ "debtor-form-group"] $ do
         input_ [type_ "number", id_ "amount", name_ "amount", value_ (text $ shareAmount debtorShare)]
-        select_ [autocomplete_ "off", name_ "share-type", value_ (T.pack $ show debtorShare)] $ do
-          option_ [value_ "percentage", selected_ "selected"] "%"
-          option_ [value_ "fixed"] "kr"
+        select_ [name_ "share-type", value_ (text debtorShare.shareType)] $ do
+          mapM_
+            ( \shareType ->
+                option_
+                  ([value_ (text shareType)] <> if shareType == debtorShare.shareType then [selected_ "selected"] else [])
+                  (toHtml shareType)
+            )
+            [Percentage, Fixed]
         span_ [class_ "form-comment"] "av"
       div_ [class_ "debtor-form-group"] $ do
         input_ [type_ "number", id_ "total", name_ "total", min_ "0", value_ (text $ exp.total)]
@@ -555,6 +563,7 @@ editExpensePage_ exp debtorShare = baseTemplate $ do
     div_ [id_ "edit-action-buttons"] $ do
       button_ [type_ "submit", hxPatch_ ("/split/spara/" <> text exp.id), hxTarget_ "body"] "Spara"
       button_ [type_ "button", hxDelete_ ("/split/ta-bort/" <> text exp.id), hxSwap_ "none"] "Ta bort"
+    maybe mempty toHtml feedback
 
 encodeDate :: (Show a) => a -> Text
 encodeDate = T.pack . filter isNumber . show
@@ -611,8 +620,8 @@ pieChart_ exp size =
         . foldl' (genColorText total) (0, [])
 
     genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
-    genColorText _ (sum', txt) (Percentage p sh _) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
-    genColorText total (sum', txt) (Fixed p sh _) = (sum' + toPercent sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + toPercent sh)])
+    genColorText _ (sum', txt) (Share Percentage p sh _) = (sum' + sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + sh)])
+    genColorText total (sum', txt) (Share Fixed p sh _) = (sum' + toPercent sh, txt <> [colorShare p.color sum', colorShare p.color (sum' + toPercent sh)])
       where
         toPercent :: Amount -> Float
         toPercent = (* 100) . (/ total)

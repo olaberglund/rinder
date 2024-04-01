@@ -7,12 +7,10 @@ import Data.Bifunctor (bimap)
 import Data.Coerce (coerce)
 import Data.List (find, foldl', nub, partition, sortOn, unfoldr)
 import Data.Map qualified as M
-import Data.Ord (Down (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (LocalTime, TimeZone, UTCTime, defaultTimeLocale, formatTime, utcToLocalTime)
 import Data.UUID (UUID)
-import Debug.Trace (traceShow, traceShowId)
 import GHC.Generics (Generic)
 import Lucid
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
@@ -96,7 +94,7 @@ data ExpenseForm = ExpenseForm
   { debtor :: Person,
     paidBy :: Person,
     split :: Split,
-    shareType :: Text,
+    shareType :: ShareType,
     amount :: Float,
     rubric :: Text,
     total :: Amount
@@ -109,15 +107,14 @@ instance FromForm ExpenseForm where
     total <- (parseUnique "total" form >>= mayNotBeNegative "Total")
     rubric <- (parseUnique "rubric" form >>= mayNotBeEmpty)
     amount <- (parseUnique "amount" form >>= mayNotBeNegative "Amount")
-    shareType <- parseUnique "share-type" form
+    shareType <- fromForm form
     oPerson <- note "Couldn't find person" (otherPerson debtor)
     split' <- case shareType of
-      "percentage" ->
+      Percentage ->
         if amount > 100
           then Left "Percentage may not be greater than 100"
-          else mkSplit total [Percentage debtor amount True, Percentage oPerson (100 - amount) False]
-      "fixed" -> mkSplit total [Fixed debtor amount True, Fixed oPerson (total - amount) False]
-      _ -> Left "Invalid share type"
+          else mkSplit total [Share Percentage debtor amount True, Share Percentage oPerson (100 - amount) False]
+      Fixed -> mkSplit total [Share Fixed debtor amount True, Share Fixed oPerson (total - amount) False]
     pure $ ExpenseForm debtor paidBy split' shareType amount rubric total
     where
       findPerson :: Text -> Either Text Person
@@ -138,13 +135,29 @@ instance FromForm ExpenseForm where
 toExpense :: ExpenseForm -> UUID -> LocalTime -> Expense
 toExpense form id' localTime = Expense id' form.split form.total form.paidBy form.rubric localTime
 
-data Share = Percentage {person :: Person, percent :: Float, entered :: Bool} | Fixed {person :: Person, amount :: Amount, entered :: Bool}
-  deriving (Eq, Generic)
+data ShareType = Percentage | Fixed
+  deriving (Generic, Eq)
   deriving anyclass (FromJSON, ToJSON)
 
-instance Show Share where
-  show (Percentage _ _ _) = "percentage"
-  show (Fixed _ _ _) = "fixed"
+instance ToHtml ShareType where
+  toHtml Fixed = "kr"
+  toHtml Percentage = "%"
+  toHtmlRaw = toHtml
+
+data Share = Share {shareType :: ShareType, person :: Person, amount :: Float, entered :: Bool}
+  deriving (Eq, Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance Show ShareType where
+  show Percentage = "percentage"
+  show Fixed = "fixed"
+
+instance FromForm ShareType where
+  fromForm form =
+    parseUnique "share-type" form >>= \case
+      ("percentage" :: Text) -> Right Percentage
+      ("fixed" :: Text) -> Right Fixed
+      _ -> Left "Invalid share type"
 
 data Split = Split {shares :: [Share]}
   deriving (Generic, Show)
@@ -168,8 +181,8 @@ formatDate :: LocalTime -> Text
 formatDate = T.pack . formatTime defaultTimeLocale "%F - %R"
 
 calcDebt :: Amount -> Share -> Amount
-calcDebt total (Percentage _ p _) = (p * total) / 100
-calcDebt _ (Fixed _ a _) = a
+calcDebt total (Share Percentage _ p _) = (p * total) / 100
+calcDebt _ (Share Fixed _ a _) = a
 
 iousToMap :: [IOU] -> IOUMap
 iousToMap = IOUMap . foldl' (\m i -> M.insertWith (M.unionWith (+)) i.from (M.singleton i.to i.amount) m) M.empty
@@ -218,8 +231,7 @@ singleDebtor :: Expense -> Maybe Share
 singleDebtor exp = find entered exp.split.shares
 
 shareAmount :: Share -> Amount
-shareAmount (Percentage _ p _) = p
-shareAmount (Fixed _ a _) = a
+shareAmount = (.amount)
 
 findExpense :: UUID -> [Transaction] -> Maybe Expense
 findExpense i = find isExpense >=> getExpense
