@@ -130,11 +130,13 @@ newtype Products = Products {products :: [Product]}
     deriving stock (Generic, Show, Eq)
 
 data Env = Env
-    { broadcastChan :: !(Chan ServerEvent)
+    { envTransactionsFile :: !FilePath
+    , envShoppingListFile :: !FilePath
+    , envBroadcastChan :: !(Chan ServerEvent)
     }
 
-newEnv :: IO Env
-newEnv = Env <$> newChan
+newEnv :: FilePath -> FilePath -> IO Env
+newEnv trFile shopFile = Env trFile shopFile <$> newChan
 
 {- FOURMOLU_DISABLE -}
 data RootApi as = RootAPI
@@ -237,37 +239,31 @@ server env =
         , staticEP = serveDirectoryWebApp "static"
         , shoppingEP =
             ShoppingApi
-                { shoppingPageEP = shoppingPageH
+                { shoppingPageEP = shoppingPageH env
                 , productListEP = productListH addToShoppingList
                 , addProductEP = addProductH env
                 , toggleProductEP = toggleProductH env
                 , removeCheckedEP = removeCheckedH env
-                , removeAllEP = removeAllH
+                , removeAllEP = removeAllH env
                 , sseEP = sseH env
                 }
         , splitEP =
             SplitApi
-                { splitPageEP = splitPageH
-                , newExpenseEP = newExpenseH
-                , settleUpEP = settleUpH
-                , editExpensePageEP = editExpensePageH
-                , saveExpenseEP = saveExpenseH
-                , removeExpenseEp = removeExpenseH
+                { splitPageEP = splitPageH env
+                , newExpenseEP = newExpenseH env
+                , settleUpEP = settleUpH env
+                , editExpensePageEP = editExpensePageH env
+                , saveExpenseEP = saveExpenseH env
+                , removeExpenseEp = removeExpenseH env
                 }
         }
 
-transactionsFile :: FilePath
-transactionsFile = "transactions.json"
-
-shoppingListFile :: FilePath
-shoppingListFile = "shopping-list.json"
-
-removeExpenseH :: UUID -> Handler NoContent
-removeExpenseH uuid = do
-    res <- liftIO $ BS.readFile transactionsFile
+removeExpenseH :: Env -> UUID -> Handler NoContent
+removeExpenseH env uuid = do
+    res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
-            liftIO $ LBS.writeFile transactionsFile (encode (deleteExpense ts))
+            liftIO $ LBS.writeFile (envTransactionsFile env) (encode (deleteExpense ts))
             hxRedirect "/split"
         Left err -> liftIO (print err) >> throwError err500
   where
@@ -277,13 +273,13 @@ removeExpenseH uuid = do
         | ExpenseTransaction e <- x, uuid == expenseId e = xs
         | otherwise = x : deleteExpense xs
 
-saveExpenseH :: UUID -> ExpenseForm -> Handler EditExpensePage
-saveExpenseH uuid form = do
-    res <- liftIO $ BS.readFile transactionsFile
+saveExpenseH :: Env -> UUID -> ExpenseForm -> Handler EditExpensePage
+saveExpenseH env uuid form = do
+    res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
             let newTs = map replaceExpense ts
-            liftIO $ LBS.writeFile transactionsFile (encode newTs)
+            liftIO $ LBS.writeFile (envTransactionsFile env) (encode newTs)
             let mexp = findExpense uuid newTs
             case (mexp, mexp >>= singleDebtor) of
                 (Just e, Just debtor) ->
@@ -304,9 +300,9 @@ saveExpenseH uuid form = do
             else ExpenseTransaction e
     replaceExpense t = t
 
-editExpensePageH :: UUID -> Handler EditExpensePage
-editExpensePageH uuid = do
-    res <- liftIO $ BS.readFile transactionsFile
+editExpensePageH :: Env -> UUID -> Handler EditExpensePage
+editExpensePageH env uuid = do
+    res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
             let expense = findExpense uuid ts
@@ -323,46 +319,49 @@ editExpensePageH uuid = do
         "Just nu stöds inte \
         \redigering av utgifter med fler deltagare än två"
 
-settleUpH :: Handler Transactions
-settleUpH = do
+settleUpH :: Env -> Handler Transactions
+settleUpH env = do
     utc <- liftIO Time.getCurrentTime
     tz <- liftIO Time.getCurrentTimeZone
     writeTransactionsHandlerHelper
+        env
         (\ts -> map SettlementTransaction (settlements tz utc ts) <> ts)
 
-newExpenseH :: ExpenseForm -> Handler Transactions
-newExpenseH form = do
+newExpenseH :: Env -> ExpenseForm -> Handler Transactions
+newExpenseH env form = do
     utc <- liftIO Time.getCurrentTime
     tz <- liftIO Time.getCurrentTimeZone
     uuid <- liftIO UUID.nextRandom
     writeTransactionsHandlerHelper
+        env
         ( ExpenseTransaction
             (toExpense form uuid (Time.utcToLocalTime tz utc))
             :
         )
 
 writeTransactionsHandlerHelper ::
+    Env ->
     ([Transaction] -> [Transaction]) ->
     Handler Transactions
-writeTransactionsHandlerHelper genNewTs = liftIO $ do
-    res <- BS.readFile transactionsFile
+writeTransactionsHandlerHelper env genNewTs = liftIO $ do
+    res <- BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
             let newTs = genNewTs ts
-            LBS.writeFile transactionsFile (encode newTs)
+            LBS.writeFile (envTransactionsFile env) (encode newTs)
             return (Transactions newTs)
         Left err -> print err >> return (Transactions [])
 
-splitPageH :: Handler SplitPage
-splitPageH = liftIO $ do
-    res <- BS.readFile transactionsFile
+splitPageH :: Env -> Handler SplitPage
+splitPageH env = liftIO $ do
+    res <- BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> return (SplitPage ts)
         Left err -> print err >> return (SplitPage [])
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
-    chan <- dupChan (broadcastChan env)
+    chan <- dupChan (envBroadcastChan env)
     return $ S.fromStepT (S.Yield keepAlive (rest chan))
   where
     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
@@ -379,12 +378,12 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllH :: Handler [ShoppingItem]
-removeAllH = liftIO $ LBS.writeFile shoppingListFile "[]" >> return []
+removeAllH :: Env -> Handler [ShoppingItem]
+removeAllH env = liftIO $ LBS.writeFile (envShoppingListFile env) "[]" >> return []
 
 removeCheckedH :: Env -> Handler [ShoppingItem]
 removeCheckedH env = liftIO $ do
-    res <- BS.readFile shoppingListFile
+    res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newItems = filter ((== Unchecked) . siCheck) ps
@@ -393,7 +392,7 @@ removeCheckedH env = liftIO $ do
 
 toggleProductH :: Env -> Product -> Handler NoContent
 toggleProductH env product' = liftIO $ do
-    res <- BS.readFile shoppingListFile
+    res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps -> void $ updateAndBroadCast env (map toggleItem ps)
         Left err -> print err
@@ -409,10 +408,10 @@ asServerEvent =
     ServerEvent Nothing Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
 
-shoppingPageH :: Handler ShoppingPage
-shoppingPageH = liftIO $ do
+shoppingPageH :: Env -> Handler ShoppingPage
+shoppingPageH env = liftIO $ do
     fetchedPromotions <- runClientDefault fetchPromotions
-    shoppingItems <- eitherDecode <$> LBS.readFile shoppingListFile
+    shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
     case shoppingItems of
         Left err -> putStrLn err >> return (ShoppingPage mempty mempty mempty)
         Right list ->
@@ -425,7 +424,7 @@ shoppingPageH = liftIO $ do
 
 addProductH :: Env -> Product -> Handler [ShoppingItem]
 addProductH env product' = liftIO $ do
-    res <- BS.readFile shoppingListFile
+    res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newList = ShoppingItem product' Unchecked : ps
@@ -440,8 +439,8 @@ redirect url = throwError err303{errHeaders = [(hLocation, url)]}
 
 updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
 updateAndBroadCast env items =
-    LBS.writeFile shoppingListFile (encode items)
-        >> writeChan (broadcastChan env) (asServerEvent items)
+    LBS.writeFile (envShoppingListFile env) (encode items)
+        >> writeChan (envBroadcastChan env) (asServerEvent items)
         >> return items
 
 productListH ::
