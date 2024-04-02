@@ -1,25 +1,22 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Server where
+module Server (newEnv, app) where
 
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (
     FromJSON (..),
-    ToJSON (toJSON),
+    ToJSON,
     eitherDecode,
     eitherDecodeStrict,
     encode,
-    genericToJSON,
  )
-import Data.Aeson.KeyMap (Key, fromList)
 import Data.Aeson.Text (encodeToLazyText)
-import Data.Aeson.Types (genericParseJSON)
 import Data.Binary.Builder qualified as Builder
 import Data.ByteString (toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import Data.Char qualified as Char
 import Data.Coerce (coerce)
 import Data.Either qualified as Either
 import Data.List qualified as List
@@ -31,6 +28,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Time qualified as Time
 import Data.UUID (UUID)
 import Data.UUID.V4 qualified as UUID
+import Deriving.Aeson (CustomJSON (..))
 import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base qualified
@@ -95,12 +93,13 @@ import Splitvajs (
     ShareType (Fixed, Percentage),
     Split (splitShares),
     Transaction (..),
-    debtsToList,
     findExpense,
     formatDate,
     people,
     peopleOfExpense,
     settlements,
+    shareTypeSymbol,
+    shareTypeToText,
     simplifiedDebts,
     singleDebtor,
     toExpense,
@@ -110,91 +109,96 @@ import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
 import Willys (
     Product (..),
     Promotion (..),
-    customOptions,
+    StripAndLower,
     fetchProducts,
     fetchPromotions,
     getId,
     getPrice,
     getSavePrice,
-    imageUrl,
     runClientDefault,
+    unImageUrl,
  )
 
 newtype Search = Search {unSearch :: Text}
-    deriving (Generic)
+    deriving stock (Generic, Show)
+    deriving newtype (Eq)
 
 instance FromForm Search where
     fromForm form = Search <$> parseUnique "query" form
 
 newtype Products = Products {products :: [Product]}
-    deriving (Generic)
+    deriving stock (Generic, Show, Eq)
 
-data Env = Env {broadcastChan :: Chan ServerEvent}
+data Env = Env
+    { broadcastChan :: !(Chan ServerEvent)
+    }
 
 newEnv :: IO Env
 newEnv = Env <$> newChan
 
 {- FOURMOLU_DISABLE -}
 data RootApi as = RootAPI
-    { homePageEP :: as :- Get '[HTML] NoContent
-    , staticEP :: as :- "static" :> Raw
-    , shoppingEP :: as :- "inkop" :> NamedRoutes ShoppingApi
-    , splitEP :: as :- "split" :> NamedRoutes SplitApi
+    { homePageEP :: !(as :- Get '[HTML] NoContent)
+    , staticEP :: !(as :- "static" :> Raw)
+    , shoppingEP :: !(as :- "inkop" :> NamedRoutes ShoppingApi)
+    , splitEP :: !(as :- "split" :> NamedRoutes SplitApi)
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 data ShoppingApi as = ShoppingApi
-    { shoppingPageEP :: as :- Get '[HTML] ShoppingPage
-    , removeCheckedEP :: as :- "ta-bort" :> Delete '[HTML] [ShoppingItem]
-    , removeAllEP :: as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem]
-    , sseEP :: as :- "sse" :> StreamGet NoFraming EventStream EventSource
+    { shoppingPageEP :: !(as :- Get '[HTML] ShoppingPage)
+    , removeCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] [ShoppingItem])
+    , removeAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem])
+    , sseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
     , productListEP 
-        :: as 
+        :: !(as 
         :- "produkter" 
         :> ReqBody '[FormUrlEncoded] Search 
-        :> Post '[HTML] ProductSearchList
+        :> Post '[HTML] ProductSearchList)
     , addProductEP 
-        :: as :- "lagg-till" 
+        :: !(as :- "lagg-till" 
         :> ReqBody '[JSON] Product 
-        :> Post '[HTML] [ShoppingItem]
+        :> Post '[HTML] [ShoppingItem])
     , toggleProductEP 
-        :: as :- "toggla" 
+        :: !(as :- "toggla" 
         :> ReqBody '[JSON] Product 
-        :> Post '[HTML] NoContent
+        :> Post '[HTML] NoContent)
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 data SplitApi as = SplitApi
-    { splitPageEP :: as :- Get '[HTML] SplitPage
-    , settleUpEP :: as :- "gor-upp" :> Post '[HTML] Transactions
+    { splitPageEP :: !(as :- Get '[HTML] SplitPage)
+    , settleUpEP :: !(as :- "gor-upp" :> Post '[HTML] Transactions)
     , removeExpenseEp 
-        :: as 
+        :: !(as 
         :- "ta-bort" 
         :> Capture "id" UUID 
-        :> Delete '[HTML] NoContent
+        :> Delete '[HTML] NoContent)
     , newExpenseEP 
-        :: as :- "lagg-till" 
+        :: !(as :- "lagg-till" 
         :> ReqBody '[FormUrlEncoded] ExpenseForm 
-        :> Post '[HTML] Transactions
+        :> Post '[HTML] Transactions)
     , editExpensePageEP 
-        :: as 
+        :: !(as 
         :- "redigera" 
         :> Capture "id" UUID 
-        :> Get '[HTML] EditExpensePage
+        :> Get '[HTML] EditExpensePage)
     , saveExpenseEP 
-        :: as 
+        :: !(as 
         :- "spara" 
         :> Capture "id" UUID 
         :> ReqBody '[FormUrlEncoded] ExpenseForm 
-        :> Patch '[HTML] EditExpensePage
+        :> Patch '[HTML] EditExpensePage)
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 {- FOURMOLU_ENABLE -}
 
 data Feedback = Success | Failure
+    deriving stock (Show, Eq)
 
-data FeedbackMessage = FeedbackMessage Feedback Text
+data FeedbackMessage = FeedbackMessage !Feedback !Text
+    deriving stock (Show, Eq)
 
 instance ToHtml FeedbackMessage where
     toHtml (FeedbackMessage Success msg) =
@@ -263,14 +267,15 @@ removeExpenseH uuid = do
     res <- liftIO $ BS.readFile transactionsFile
     case eitherDecodeStrict res of
         Right ts -> do
-            let newTs = filter isNotExpense ts
-            liftIO $ LBS.writeFile transactionsFile (encode newTs)
+            liftIO $ LBS.writeFile transactionsFile (encode (deleteExpense ts))
             hxRedirect "/split"
         Left err -> liftIO (print err) >> throwError err500
   where
-    isNotExpense :: Transaction -> Bool
-    isNotExpense (ExpenseTransaction e) = expenseId e /= uuid
-    isNotExpense _ = True
+    deleteExpense :: [Transaction] -> [Transaction]
+    deleteExpense [] = []
+    deleteExpense (x : xs)
+        | ExpenseTransaction e <- x, uuid == expenseId e = xs
+        | otherwise = x : deleteExpense xs
 
 saveExpenseH :: UUID -> ExpenseForm -> Handler EditExpensePage
 saveExpenseH uuid form = do
@@ -319,29 +324,31 @@ editExpensePageH uuid = do
         \redigering av utgifter med fler deltagare än två"
 
 settleUpH :: Handler Transactions
-settleUpH = liftIO $ do
-    res <- BS.readFile transactionsFile
-    utc <- Time.getCurrentTime
-    tz <- Time.getCurrentTimeZone
-    case eitherDecodeStrict res of
-        Right ts -> do
-            let newTs = map SettlementTransaction (settlements tz utc ts) <> ts
-            LBS.writeFile transactionsFile (encode newTs)
-            return (Transactions newTs)
-        Left err -> print err >> return (Transactions [])
+settleUpH = do
+    utc <- liftIO Time.getCurrentTime
+    tz <- liftIO Time.getCurrentTimeZone
+    writeTransactionsHandlerHelper
+        (\ts -> map SettlementTransaction (settlements tz utc ts) <> ts)
 
 newExpenseH :: ExpenseForm -> Handler Transactions
-newExpenseH form = liftIO $ do
-    utc <- Time.getCurrentTime
-    tz <- Time.getCurrentTimeZone
+newExpenseH form = do
+    utc <- liftIO Time.getCurrentTime
+    tz <- liftIO Time.getCurrentTimeZone
+    uuid <- liftIO UUID.nextRandom
+    writeTransactionsHandlerHelper
+        ( ExpenseTransaction
+            (toExpense form uuid (Time.utcToLocalTime tz utc))
+            :
+        )
+
+writeTransactionsHandlerHelper ::
+    ([Transaction] -> [Transaction]) ->
+    Handler Transactions
+writeTransactionsHandlerHelper genNewTs = liftIO $ do
     res <- BS.readFile transactionsFile
-    uuid <- UUID.nextRandom
     case eitherDecodeStrict res of
         Right ts -> do
-            let newTs =
-                    ExpenseTransaction
-                        (toExpense form uuid (Time.utcToLocalTime tz utc))
-                        : ts
+            let newTs = genNewTs ts
             LBS.writeFile transactionsFile (encode newTs)
             return (Transactions newTs)
         Left err -> print err >> return (Transactions [])
@@ -355,7 +362,7 @@ splitPageH = liftIO $ do
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
-    chan <- dupChan env.broadcastChan
+    chan <- dupChan (broadcastChan env)
     return $ S.fromStepT (S.Yield keepAlive (rest chan))
   where
     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
@@ -367,9 +374,6 @@ sseH env = liftIO $ do
 
     keepAlive :: ServerEvent
     keepAlive = CommentEvent (Builder.fromByteString "keep-alive")
-
-encodeToText :: (ToJSON v) => [(Key, v)] -> Text
-encodeToText = TL.toStrict . encodeToLazyText . fromList
 
 toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
@@ -391,17 +395,14 @@ toggleProductH :: Env -> Product -> Handler NoContent
 toggleProductH env product' = liftIO $ do
     res <- BS.readFile shoppingListFile
     case eitherDecodeStrict res of
-        Right ps ->
-            let newItems =
-                    map
-                        ( \i ->
-                            if siProduct i == product'
-                                then i{siCheck = toggle (siCheck i)}
-                                else i
-                        )
-                        ps
-             in updateAndBroadCast env newItems >> return NoContent
-        Left err -> print err >> return NoContent
+        Right ps -> void $ updateAndBroadCast env (map toggleItem ps)
+        Left err -> print err
+    return NoContent
+  where
+    toggleItem :: ShoppingItem -> ShoppingItem
+    toggleItem i
+        | siProduct i == product' = i{siCheck = toggle (siCheck i)}
+        | otherwise = i
 
 asServerEvent :: (ToHtml a) => [a] -> ServerEvent
 asServerEvent =
@@ -500,7 +501,8 @@ baseTemplate' content = do
             content
   where
 
-data Page404 = Page404 Text
+data Page404 = Page404 !Text
+    deriving stock (Show, Eq)
 
 instance ToHtml Page404 where
     toHtml (Page404 mtext) = baseTemplate $ do
@@ -515,11 +517,11 @@ navbar_ = nav_ $ ul_ $ do
 
 data ProductSearchList
     = ProductSearchList
-        (Product -> [Attribute])
-        [Product]
-        Text
-        Text
-    deriving (Generic)
+        !(Product -> [Attribute])
+        ![Product]
+        !Text
+        !Text
+    deriving stock (Generic)
 
 instance ToHtml ProductSearchList where
     toHtmlRaw = toHtml
@@ -536,7 +538,7 @@ instance ToHtml ProductSearchList where
                     $ do
                         img_
                             [ class_ "product"
-                            , src_ (imageUrl (productImage p))
+                            , src_ (unImageUrl (productImage p))
                             ]
                         div_ [class_ "product-details"] $ do
                             span_ [class_ "product-name"] $
@@ -562,6 +564,7 @@ addToShoppingList p =
 
 data ShoppingPage
     = ShoppingPage ![Product] ![Promotion] !(Maybe [ShoppingItem])
+    deriving stock (Show, Eq)
 
 instance ToHtml ShoppingPage where
     toHtml (ShoppingPage products promotions shoppingList) = baseTemplate $ do
@@ -620,17 +623,12 @@ instance ToHtml ShoppingPage where
     toHtmlRaw = toHtml
 
 data Checkbox = Checked | Unchecked
-    deriving (Generic, Eq, Show)
+    deriving stock (Generic, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
 
-data ShoppingItem = ShoppingItem {siProduct :: Product, siCheck :: Checkbox}
-    deriving (Generic, Show)
-
-instance FromJSON ShoppingItem where
-    parseJSON = genericParseJSON (customOptions "si")
-
-instance ToJSON ShoppingItem where
-    toJSON = genericToJSON (customOptions "si")
+data ShoppingItem = ShoppingItem {siProduct :: !Product, siCheck :: !Checkbox}
+    deriving stock (Generic, Show, Eq)
+    deriving (FromJSON, ToJSON) via StripAndLower "si" ShoppingItem
 
 instance ToHtml ShoppingItem where
     toHtml item = shoppingItem_ item
@@ -649,7 +647,7 @@ instance ToHtml [ShoppingItem] where
 
 shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
 shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
-    img_ [class_ "item-image", src_ (imageUrl (productImage (siProduct item)))]
+    img_ [class_ "item-image", src_ (unImageUrl (productImage (siProduct item)))]
     div_ [class_ "item-details"] $ do
         div_ [class_ "item-details-text"] $ do
             span_ [class_ "product-name"] $ toHtml (productName (siProduct item))
@@ -704,18 +702,13 @@ productSearch_ attributes posturl products = do
   where
     listId = "searched-products"
 
-data OnClick a = OnClick (a -> Text)
-
-params :: Product -> Text
-params p = "'" <> productName p <> "', '" <> imageUrl (productImage p) <> "'"
-
 hxSseConnect_ :: Text -> Attribute
 hxSseConnect_ = Lucid.Base.makeAttribute "sse-connect"
 
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = Lucid.Base.makeAttribute "sse-swap"
 
-data SplitPage = SplitPage [Transaction]
+data SplitPage = SplitPage ![Transaction]
 
 instance ToHtml SplitPage where
     toHtmlRaw = toHtml
@@ -821,9 +814,10 @@ instance ToHtml Transactions where
                 else div_ [class_ "expenses-container"] $ do
                     mapM_ toHtml transactions
       where
-        settles = debtsToList $ simplifiedDebts transactions
+        settles = simplifiedDebts transactions
 
-data Transactions = Transactions [Transaction]
+data Transactions = Transactions ![Transaction]
+    deriving stock (Show, Eq)
 
 iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
 iou_ (p, ious') = do
@@ -841,7 +835,8 @@ debtItem_ (p, amount) =
             <> ": "
             <> Text.pack (showFFloat (Just 2) amount "kr")
 
-data EditExpensePage = EditExpensePage Expense Share (Maybe FeedbackMessage)
+data EditExpensePage = EditExpensePage !Expense !Share !(Maybe FeedbackMessage)
+    deriving stock (Show, Eq)
 
 instance ToHtml EditExpensePage where
     toHtmlRaw = toHtml
@@ -902,18 +897,18 @@ instance ToHtml EditExpensePage where
                             ]
                         select_
                             [ name_ "share-type"
-                            , value_ (text debtorShare.shareType)
+                            , value_ (text (shareType debtorShare))
                             ]
                             $ do
                                 mapM_
-                                    ( \shareType ->
+                                    ( \st ->
                                         option_
-                                            ( [value_ (text shareType)]
-                                                <> if shareType == debtorShare.shareType
+                                            ( [value_ (shareTypeToText st)]
+                                                <> if st == shareType debtorShare
                                                     then [selected_ "selected"]
                                                     else []
                                             )
-                                            (toHtml shareType)
+                                            (toHtml (shareTypeSymbol st))
                                     )
                                     [Percentage, Fixed]
                         span_ [class_ "form-comment"] "av"
@@ -943,9 +938,6 @@ instance ToHtml EditExpensePage where
                         "Ta bort"
                 maybe mempty toHtml message
 
-encodeDate :: (Show a) => a -> Text
-encodeDate = Text.pack . filter Char.isNumber . show
-
 instance ToHtml Transaction where
     toHtmlRaw = toHtml
     toHtml (ExpenseTransaction e) = div_ [class_ "expense-container"] $ do
@@ -961,7 +953,7 @@ instance ToHtml Transaction where
                             <> personColor (expensePaidBy e)
                     ]
                     $ toHtml
-                    $ show (expensePaidBy e)
+                    $ personName (expensePaidBy e)
                 a_
                     [ class_ "edit-link"
                     , href_ $ "/split/redigera/" <> text (expenseId e)
@@ -984,7 +976,7 @@ instance ToHtml Transaction where
                     , style_ $ "background-color: " <> personColor (settlementFrom s)
                     ]
                     $ toHtml
-                    $ show (settlementFrom s)
+                    $ personName (settlementFrom s)
         div_ [class_ "expense-info-container"] $ do
             span_ $ toHtml $ show (settlementAmount s) <> "kr"
             i_ [class_ "settle-icons"] "💸"

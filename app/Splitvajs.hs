@@ -1,10 +1,31 @@
-module Splitvajs where
+module Splitvajs (
+    Amount,
+    Expense (..),
+    ExpenseForm,
+    Person (..),
+    Settlement (..),
+    Share (..),
+    ShareType (..),
+    Split (..),
+    Transaction (..),
+    findExpense,
+    formatDate,
+    people,
+    peopleOfExpense,
+    settlements,
+    simplifiedDebts,
+    singleDebtor,
+    toExpense,
+    shareTypeSymbol,
+    shareTypeToText,
+) where
 
 import Control.Arrow qualified as Arrow
 import Control.Monad ((>=>))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (bimap)
 import Data.Coerce (coerce)
+import Data.Function (on)
 import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -16,12 +37,12 @@ import Lucid
 import Safe qualified as Safe
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
-data Person = Person {personName :: Text, personColor :: Text}
-    deriving (Generic, Ord, Eq)
+data Person = Person
+    { personName :: !Text
+    , personColor :: !Text
+    }
+    deriving stock (Generic, Ord, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
-
-instance Show Person where
-    show = Text.unpack . personName
 
 instance ToHtml Person where
     toHtml = toHtml . personName
@@ -51,14 +72,15 @@ payOff credits debts = payOff' [] credits debts
             LT -> payOff' (IOU p' p credit : ds) ts (Tally p' (debt - credit))
     payOff' _ [] _ = ([], [])
 
-simplifiedDebts :: [Transaction] -> IouMap
-simplifiedDebts = minimizeTransactions . tallies
-
-debtsToList :: IouMap -> [(Person, [(Person, Amount)])]
-debtsToList = Map.toList . Map.map Map.toList . coerce
+simplifiedDebts :: [Transaction] -> [(Person, [(Person, Amount)])]
+simplifiedDebts = debtsToList . minimizeTransactions . tallies
+  where
+    debtsToList :: IouMap -> [(Person, [(Person, Amount)])]
+    debtsToList = Map.toList . Map.map Map.toList . coerce
 
 minimizeTransactions :: ([Tally Owed], [Tally Owing]) -> IouMap
-minimizeTransactions = IouMap . Map.unions @[] . coerce . List.unfoldr payOffStep
+minimizeTransactions =
+    IouMap . Map.unions @[] . coerce . List.unfoldr payOffStep
   where
     payOffStep ::
         ([Tally Owed], [Tally Owing]) ->
@@ -71,41 +93,45 @@ minimizeTransactions = IouMap . Map.unions @[] . coerce . List.unfoldr payOffSte
 type Amount = Float
 
 data Transaction
-    = ExpenseTransaction Expense
-    | SettlementTransaction Settlement
-    deriving (Generic, Show)
+    = ExpenseTransaction !Expense
+    | SettlementTransaction !Settlement
+    deriving stock (Generic, Show, Eq)
     deriving anyclass (FromJSON, ToJSON)
 
 data Expense = Expense
-    { expenseSplit :: Split
-    , expenseTotal :: Amount
-    , expensePaidBy :: Person
-    , expenseRubric :: Text
-    , expenseId :: UUID
-    , expenseDate :: Time.LocalTime
+    { expenseSplit :: !Split
+    , expenseTotal :: !Amount
+    , expensePaidBy :: !Person
+    , expenseRubric :: !Text
+    , expenseId :: !UUID
+    , expenseDate :: !Time.LocalTime
     }
-    deriving (Generic, Show)
+    deriving stock (Generic, Show)
     deriving anyclass (FromJSON, ToJSON)
 
+instance Eq Expense where
+    (==) = (==) `on` expenseId
+
 data Settlement = Settlement
-    { settlementFrom :: Person
-    , settlementTo :: Person
-    , settlementAmount :: Amount
-    , settlementDate :: Time.LocalTime
+    { settlementFrom :: !Person
+    , settlementTo :: !Person
+    , settlementAmount :: !Amount
+    , settlementDate :: !Time.LocalTime
     }
-    deriving (Generic, Show)
+    deriving stock (Generic, Show, Eq)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | the current implementation of the expense form
 data ExpenseForm = ExpenseForm
-    { efDebtor :: Person
-    , efPaidBy :: Person
-    , efSplit :: Split
-    , efShareType :: ShareType
-    , efAmount :: Float
-    , efRubric :: Text
-    , efTotal :: Amount
+    { efDebtor :: !Person
+    , efPaidBy :: !Person
+    , efSplit :: !Split
+    , efShareType :: !ShareType
+    , efAmount :: !Float
+    , efRubric :: !Text
+    , efTotal :: !Amount
     }
+    deriving stock (Show, Eq)
 
 instance FromForm ExpenseForm where
     fromForm form = do
@@ -159,27 +185,28 @@ toExpense :: ExpenseForm -> UUID -> Time.LocalTime -> Expense
 toExpense (ExpenseForm{efSplit, efTotal, efPaidBy, efRubric}) =
     Expense efSplit efTotal efPaidBy efRubric
 
-data ShareType = Percentage | Fixed
-    deriving (Generic, Eq)
+data ShareType
+    = Percentage
+    | Fixed
+    deriving stock (Generic, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
-
-instance ToHtml ShareType where
-    toHtml Fixed = "kr"
-    toHtml Percentage = "%"
-    toHtmlRaw = toHtml
 
 data Share = Share
-    { shareType :: ShareType
-    , sharePerson :: Person
-    , shareAmount :: Float
-    , shareEntered :: Bool
+    { shareType :: !ShareType
+    , sharePerson :: !Person
+    , shareAmount :: !Float
+    , shareEntered :: !Bool
     }
-    deriving (Eq, Generic, Show)
+    deriving stock (Eq, Generic, Show)
     deriving anyclass (FromJSON, ToJSON)
 
-instance Show ShareType where
-    show Percentage = "percentage"
-    show Fixed = "fixed"
+shareTypeToText :: ShareType -> Text
+shareTypeToText Percentage = "percentage"
+shareTypeToText Fixed = "fixed"
+
+shareTypeSymbol :: ShareType -> Text
+shareTypeSymbol Percentage = "%"
+shareTypeSymbol Fixed = "kr"
 
 instance FromForm ShareType where
     fromForm form =
@@ -188,12 +215,18 @@ instance FromForm ShareType where
             ("fixed" :: Text) -> Right Fixed
             _ -> Left "Invalid share type"
 
-data Split = Split {splitShares :: [Share]}
-    deriving (Generic, Show)
+data Split = Split
+    { splitShares :: ![Share]
+    }
+    deriving stock (Generic, Show, Eq)
     deriving anyclass (FromJSON, ToJSON)
 
-data IOU = IOU {iouFrom :: Person, iouTo :: Person, iouAmount :: Amount}
-    deriving (Show)
+data IOU = IOU
+    { iouFrom :: !Person
+    , iouTo :: !Person
+    , iouAmount :: !Amount
+    }
+    deriving stock (Show, Eq)
 
 iou :: Transaction -> [IOU]
 iou (ExpenseTransaction e) =
@@ -207,7 +240,7 @@ iou (SettlementTransaction s) =
 settlements :: Time.TimeZone -> Time.UTCTime -> [Transaction] -> [Settlement]
 settlements tz utc ts =
     [ Settlement p creditor amount (Time.utcToLocalTime tz utc)
-    | (p, debts) <- debtsToList (simplifiedDebts ts)
+    | (p, debts) <- simplifiedDebts ts
     , (creditor, amount) <- debts
     ]
 
@@ -266,14 +299,18 @@ splitTally =
         . List.partition ((>= 0) . snd)
         . Map.toList
 
-data Tally a = Tally Person Amount
-    deriving (Show)
+data Tally a = Tally !Person !Amount
+    deriving stock (Show, Eq)
 
 data Owing
 
 data Owed
 
-newtype IouMap = IouMap (Map.Map Person (Map.Map Person Amount))
+newtype IouMap = IouMap
+    { unIouMap :: Map.Map Person (Map.Map Person Amount)
+    }
+    deriving stock (Show)
+    deriving newtype (Eq)
 
 tallies :: [Transaction] -> ([Tally Owed], [Tally Owing])
 tallies = splitTally . tally . iousToMap . ious

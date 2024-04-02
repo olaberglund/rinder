@@ -1,7 +1,18 @@
-module Willys where
+module Willys (
+    Product (..),
+    Promotion (..),
+    fetchProducts,
+    fetchPromotions,
+    getId,
+    getPrice,
+    getSavePrice,
+    runClientDefault,
+    unImageUrl,
+    StripAndLower,
+) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson ((.:))
+import Data.Aeson (FromJSON, ToJSON, (.:))
 import Data.Aeson qualified as Aeson
 import Data.Char qualified as Char
 import Data.Function (on)
@@ -9,6 +20,8 @@ import Data.Maybe (fromMaybe)
 import Data.Ord qualified as Ord
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
+import Deriving.Aeson qualified
 import GHC.Generics (Generic)
 import Lucid (ToHtml (..), classes_, div_)
 import Network.HTTP.Client.TLS qualified as TLS
@@ -31,23 +44,23 @@ type WillysAPI = NamedRoutes WillysRootAPI
 {- FOURMOLU_DISABLE -}
 data WillysRootAPI as = WillysRootAPI
     { getPromotionsEP 
-        :: as 
+         :: !(as 
         :- "search" 
         :> "campaigns" 
         :> "offline" 
         :> QueryParam "q" Int 
         :> QueryParam "type" Text 
         :> QueryParam "size" Int 
-        :> Get '[JSON] PromotionResponse
+        :> Get '[JSON] PromotionResponse)
     , searchProductsEP 
-        :: as 
+        :: !(as 
         :- "search" 
         :> "clean" 
         :> QueryParam "q" Text 
         :> QueryParam "size" Int 
-        :> Get '[JSON] ProductResponse
+        :> Get '[JSON] ProductResponse)
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 {- FOURMOLU_ENABLE -}
 runClientDefault :: Client.ClientM a -> IO (Either Client.ClientError a)
@@ -86,45 +99,45 @@ fetchProducts q =
     responseResults
         <$> (apiClient // searchProductsEP /: Just q /: Just 80)
 
+type StripAndLower a b =
+    CustomJSON
+        '[FieldLabelModifier '[StripPrefix a, PascalToCamel]]
+        b
+
 type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
 
 data Response a = Response
-    { responseResults :: [a]
-    , responsePagination :: Pagination
+    { responseResults :: ![a]
+    , responsePagination :: !Pagination
     }
-    deriving (Generic, Show)
+    deriving stock (Generic, Show)
+    deriving (FromJSON, ToJSON) via StripAndLower "response" (Response a)
 
-instance (Aeson.FromJSON a) => Aeson.FromJSON (Response a) where
-    parseJSON = Aeson.genericParseJSON (customOptions "response")
+data PascalToCamel
 
-instance (Aeson.ToJSON a) => Aeson.ToJSON (Response a) where
-    toJSON = Aeson.genericToJSON (customOptions "response")
+instance Deriving.Aeson.StringModifier PascalToCamel where
+    getStringModifier = lowerCaseFirst
+      where
+        lowerCaseFirst :: String -> String
+        lowerCaseFirst (c : cs) = Char.toLower c : cs
+        lowerCaseFirst s = s
 
 newtype Pagination = Pagination {unPagination :: Int}
-    deriving (Generic, Show)
-
-instance Aeson.FromJSON Pagination where
-    parseJSON = Aeson.genericParseJSON paginationJSONOptions
-
-instance Aeson.ToJSON Pagination where
-    toJSON = Aeson.genericToJSON paginationJSONOptions
-
-paginationJSONOptions :: Aeson.Options
-paginationJSONOptions =
-    Aeson.defaultOptions
-        { Aeson.fieldLabelModifier = const "numberOfPages"
-        }
+    deriving stock (Generic, Show)
+    deriving newtype (Num)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[Rename "unPagination" "numberOfPages"]]
+                Pagination
 
 {- Promotion -}
 
 newtype Promotion = Promotion {unProduct :: Product}
-    deriving (Generic, Show, Ord)
-    deriving newtype (Aeson.ToJSON)
-
-instance Eq Promotion where
-    (==) = (==) `on` unProduct
+    deriving stock (Generic, Show)
+    deriving newtype (Ord, Eq)
 
 instance Aeson.FromJSON Promotion where
     parseJSON = Aeson.withObject "Promotion" $ \v -> do
@@ -153,34 +166,16 @@ instance ToHtml Promotion where
 getId :: Product -> Text
 getId p =
     Text.filter (/= ' ') (productName p)
-        <> Text.filter Char.isNumber (imageUrl (productImage p))
+        <> Text.filter Char.isNumber (unImageUrl (productImage p))
 
 data Product = Product
-    { productName :: Text
-    , productImage :: ImageUrl
-    , productPrice :: Maybe Text
-    , productPotentialPromotions :: [PotentialPromotion]
+    { productName :: !Text
+    , productImage :: !ImageUrl
+    , productPrice :: !(Maybe Text)
+    , productPotentialPromotions :: ![PotentialPromotion]
     }
-    deriving (Generic, Show)
-
-instance Aeson.FromJSON Product where
-    parseJSON = Aeson.genericParseJSON (customOptions "product")
-
-instance Aeson.ToJSON Product where
-    toJSON = Aeson.genericToJSON (customOptions "product")
-
-customOptions :: String -> Aeson.Options
-customOptions prefix =
-    Aeson.defaultOptions
-        { Aeson.fieldLabelModifier = removePrefix prefix
-        }
-
-removePrefix :: String -> String -> String
-removePrefix prefix = lowerCaseFirst . drop (length prefix)
-  where
-    lowerCaseFirst :: String -> String
-    lowerCaseFirst (c : cs) = Char.toLower c : cs
-    lowerCaseFirst s = s
+    deriving stock (Generic, Show)
+    deriving (FromJSON, ToJSON) via StripAndLower "product" Product
 
 instance Eq Product where
     (==) = (==) `on` getId
@@ -194,26 +189,25 @@ instance ToHtml Product where
 
 {- ImageUrl -}
 
-newtype ImageUrl = ImageUrl {imageUrl :: Text}
-    deriving (Generic, Show, Ord, Eq)
-
-instance Aeson.FromJSON ImageUrl where
-    parseJSON = Aeson.genericParseJSON (customOptions "image")
-
-instance Aeson.ToJSON ImageUrl where
-    toJSON = Aeson.genericToJSON (customOptions "image")
+newtype ImageUrl = ImageUrl
+    { unImageUrl :: Text
+    }
+    deriving stock (Generic, Show)
+    deriving newtype (Eq, Ord)
+    deriving (FromJSON, ToJSON) via StripAndLower "unImage" ImageUrl
 
 {- PotentialPromotion -}
 
 data PotentialPromotion = PotentialPromotion
-    {ppCartLabel :: Maybe Text, ppSavePrice :: Maybe Text}
-    deriving (Generic, Show, Eq, Ord)
-
-instance Aeson.FromJSON PotentialPromotion where
-    parseJSON = Aeson.genericParseJSON (customOptions "pp")
-
-instance Aeson.ToJSON PotentialPromotion where
-    toJSON = Aeson.genericToJSON (customOptions "pp")
+    { ppCartLabel :: !(Maybe Text)
+    , ppSavePrice :: !(Maybe Text)
+    }
+    deriving stock (Generic, Show, Eq, Ord)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[StripPrefix "pp", PascalToCamel]]
+                PotentialPromotion
 
 getCartLabel :: Product -> Maybe Text
 getCartLabel p = Safe.headMay (productPotentialPromotions p) >>= ppCartLabel

@@ -49,6 +49,9 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
+                 -Werror=missing-deriving-strategies 
+                 -Wmissing-export-lists 
+                 -Wmissing-signatures
 
 executable rinder
     -- Import common warning flags.
@@ -69,7 +72,6 @@ executable rinder
                     ,   TypeApplications
                     ,   LambdaCase
                     ,   ScopedTypeVariables
-                    ,   OverloadedRecordDot 
                     ,   DerivingStrategies
                     ,   DerivingVia
                     ,   DeriveAnyClass
@@ -102,7 +104,8 @@ executable rinder
                       servant,
                       time,
                       uuid,
-                      safe
+                      safe,
+                      deriving-aeson
 
     ghc-options: -threaded 
 
