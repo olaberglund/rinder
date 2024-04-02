@@ -101,7 +101,8 @@ executable rinder
                       servant-event-stream,
                       servant,
                       time,
-                      uuid
+                      uuid,
+                      safe
 
     ghc-options: -threaded 
 
