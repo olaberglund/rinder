@@ -1,14 +1,15 @@
-module Willys (
-    Product (..),
+module Willys.Response (
+    ProductResponse,
+    PromotionResponse,
     Promotion (..),
-    fetchProducts,
-    fetchPromotions,
-    getId,
+    Product (..),
+    ImageUrl (..),
+    responseResults,
+    StripAndLower,
+    getCartLabel,
     getPrice,
     getSavePrice,
-    runClientDefault,
-    unImageUrl,
-    StripAndLower,
+    getId,
 ) where
 
 import Control.Applicative ((<|>))
@@ -23,81 +24,15 @@ import Data.Text qualified as Text
 import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
 import Deriving.Aeson qualified
 import GHC.Generics (Generic)
-import Lucid (ToHtml (..), classes_, div_)
-import Network.HTTP.Client.TLS qualified as TLS
+import Lucid (ToHtml (..))
 import Safe qualified
-import Servant (
-    GenericMode (type (:-)),
-    Get,
-    JSON,
-    NamedRoutes,
-    Proxy (Proxy),
-    QueryParam,
-    type (:>),
- )
-import Servant.Client ((//), (/:))
-import Servant.Client qualified as Client
-import Servant.Client.Core qualified as Core
 
-type WillysAPI = NamedRoutes WillysRootAPI
-
-{- FOURMOLU_DISABLE -}
-data WillysRootAPI as = WillysRootAPI
-    { getPromotionsEP 
-         :: !(as 
-        :- "search" 
-        :> "campaigns" 
-        :> "offline" 
-        :> QueryParam "q" Int 
-        :> QueryParam "type" Text 
-        :> QueryParam "size" Int 
-        :> Get '[JSON] PromotionResponse)
-    , searchProductsEP 
-        :: !(as 
-        :- "search" 
-        :> "clean" 
-        :> QueryParam "q" Text 
-        :> QueryParam "size" Int 
-        :> Get '[JSON] ProductResponse)
+data Response a = Response
+    { responseResults :: ![a]
+    , responsePagination :: !Pagination
     }
-    deriving stock (Generic)
-
-{- FOURMOLU_ENABLE -}
-runClientDefault :: Client.ClientM a -> IO (Either Client.ClientError a)
-runClientDefault action = do
-    mgr <- TLS.newTlsManager
-    baseUrl <- Client.parseBaseUrl "willys.se"
-    Client.runClientM action (addUserAgent $ Client.mkClientEnv mgr baseUrl)
-
-addUserAgent :: Client.ClientEnv -> Client.ClientEnv
-addUserAgent env =
-    env
-        { Client.makeClientRequest =
-            \b ->
-                Client.defaultMakeClientRequest b
-                    . Core.addHeader "User-Agent" userAgent
-        }
-  where
-    userAgent :: Text
-    userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
-
-apiClient :: WillysRootAPI (Client.AsClientT Client.ClientM)
-apiClient = Client.client (Proxy @WillysAPI)
-
-fetchPromotions :: Client.ClientM [Promotion]
-fetchPromotions =
-    responseResults
-        <$> ( apiClient
-                // getPromotionsEP
-                /: Just 2176
-                /: Just "PERSONAL_GENERAL"
-                /: Just 2000
-            )
-
-fetchProducts :: Text -> Client.ClientM [Product]
-fetchProducts q =
-    responseResults
-        <$> (apiClient // searchProductsEP /: Just q /: Just 80)
+    deriving stock (Generic, Show)
+    deriving (FromJSON, ToJSON) via StripAndLower "response" (Response a)
 
 type StripAndLower a b =
     CustomJSON
@@ -107,13 +42,6 @@ type StripAndLower a b =
 type ProductResponse = Response Product
 
 type PromotionResponse = Response Promotion
-
-data Response a = Response
-    { responseResults :: ![a]
-    , responsePagination :: !Pagination
-    }
-    deriving stock (Generic, Show)
-    deriving (FromJSON, ToJSON) via StripAndLower "response" (Response a)
 
 data PascalToCamel
 
@@ -135,7 +63,7 @@ newtype Pagination = Pagination {unPagination :: Int}
 
 {- Promotion -}
 
-newtype Promotion = Promotion {unProduct :: Product}
+newtype Promotion = Promotion {unPromotion :: Product}
     deriving stock (Generic, Show)
     deriving newtype (Ord, Eq)
 
@@ -153,20 +81,6 @@ instance Aeson.FromJSON Promotion where
                     price
                     potentialPromotions
                 )
-
-instance ToHtml Promotion where
-    toHtml (Promotion prod) = do
-        div_ [classes_ ["flex, space-x-2"]] $ do
-            toHtml prod
-
-    toHtmlRaw = toHtml
-
-{- Product -}
-
-getId :: Product -> Text
-getId p =
-    Text.filter (/= ' ') (productName p)
-        <> Text.filter Char.isNumber (unImageUrl (productImage p))
 
 data Product = Product
     { productName :: !Text
@@ -187,17 +101,6 @@ instance ToHtml Product where
     toHtml = toHtml . productName
     toHtmlRaw = toHtml
 
-{- ImageUrl -}
-
-newtype ImageUrl = ImageUrl
-    { unImageUrl :: Text
-    }
-    deriving stock (Generic, Show)
-    deriving newtype (Eq, Ord)
-    deriving (FromJSON, ToJSON) via StripAndLower "unImage" ImageUrl
-
-{- PotentialPromotion -}
-
 data PotentialPromotion = PotentialPromotion
     { ppCartLabel :: !(Maybe Text)
     , ppSavePrice :: !(Maybe Text)
@@ -208,6 +111,18 @@ data PotentialPromotion = PotentialPromotion
         via CustomJSON
                 '[FieldLabelModifier '[StripPrefix "pp", PascalToCamel]]
                 PotentialPromotion
+
+newtype ImageUrl = ImageUrl
+    { unImageUrl :: Text
+    }
+    deriving stock (Generic, Show)
+    deriving newtype (Eq, Ord)
+    deriving (FromJSON, ToJSON) via StripAndLower "unImage" ImageUrl
+
+getId :: Product -> Text
+getId p =
+    Text.filter (/= ' ') (productName p)
+        <> Text.filter Char.isNumber (unImageUrl (productImage p))
 
 getCartLabel :: Product -> Maybe Text
 getCartLabel p = Safe.headMay (productPotentialPromotions p) >>= ppCartLabel

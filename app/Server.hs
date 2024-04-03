@@ -106,17 +106,15 @@ import Splitvajs (
  )
 import System.Timeout qualified
 import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
-import Willys (
+import Willys.Client (fetchProducts, fetchPromotions, runClientDefault)
+import Willys.Response (
+    ImageUrl (..),
     Product (..),
     Promotion (..),
     StripAndLower,
-    fetchProducts,
-    fetchPromotions,
     getId,
     getPrice,
     getSavePrice,
-    runClientDefault,
-    unImageUrl,
  )
 
 newtype Search = Search {unSearch :: Text}
@@ -263,7 +261,10 @@ removeExpenseH env uuid = do
     res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
-            liftIO $ LBS.writeFile (envTransactionsFile env) (encode (deleteExpense ts))
+            liftIO $
+                LBS.writeFile
+                    (envTransactionsFile env)
+                    (encode (deleteExpense ts))
             hxRedirect "/split"
         Left err -> liftIO (print err) >> throwError err500
   where
@@ -379,7 +380,10 @@ toggle Checked = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Env -> Handler [ShoppingItem]
-removeAllH env = liftIO $ LBS.writeFile (envShoppingListFile env) "[]" >> return []
+removeAllH env =
+    liftIO $
+        LBS.writeFile (envShoppingListFile env) "[]"
+            >> return []
 
 removeCheckedH :: Env -> Handler [ShoppingItem]
 removeCheckedH env = liftIO $ do
