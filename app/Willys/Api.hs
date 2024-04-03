@@ -1,4 +1,4 @@
-module Willys.API (WillysRootApi, getPromotionsEP, searchProductsEP) where
+module Willys.Api (WillysRootApi, getPromotionsEP, searchProductsEP) where
 
 import Data.Text (Text)
 import GHC.Generics (Generic)

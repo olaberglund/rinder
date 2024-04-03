@@ -1,121 +1,44 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Server (newEnv, app) where
+module Server.Html (
+    Checkbox (..),
+    EditExpensePage (..),
+    Feedback (..),
+    FeedbackMessage (..),
+    Page404 (..),
+    ProductSearchList (..),
+    Search (..),
+    ShoppingItem (..),
+    ShoppingPage (..),
+    SplitPage (..),
+    Transactions (..),
+    addToShoppingList,
+) where
 
-import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (
     FromJSON (..),
     ToJSON,
-    eitherDecode,
-    eitherDecodeStrict,
     encode,
  )
 import Data.Aeson.Text (encodeToLazyText)
-import Data.Binary.Builder qualified as Builder
 import Data.ByteString (toStrict)
-import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as LBS
 import Data.Coerce (coerce)
-import Data.Either qualified as Either
 import Data.List qualified as List
 import Data.Maybe qualified as Maybe
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
-import Data.Time qualified as Time
-import Data.UUID (UUID)
-import Data.UUID.V4 qualified as UUID
 import Deriving.Aeson (CustomJSON (..))
 import GHC.Generics (Generic)
 import Lucid
 import Lucid.Base qualified
 import Lucid.Htmx qualified as HX
-import Network.HTTP.Types (hLocation)
-import Network.Wai.EventSource (ServerEvent (..))
 import Numeric (showFFloat)
 import Safe (headMay)
-import Servant (
-    Application,
-    Capture,
-    Context (EmptyContext, (:.)),
-    Delete,
-    ErrorFormatters (notFoundErrorFormatter),
-    FormUrlEncoded,
-    GenericMode (type (:-)),
-    Get,
-    Handler,
-    JSON,
-    NamedRoutes,
-    NoContent (..),
-    NoFraming,
-    Patch,
-    Post,
-    Proxy (Proxy),
-    Raw,
-    ReqBody,
-    ServerError (errBody, errHeaders),
-    StreamGet,
-    defaultErrorFormatters,
-    err303,
-    err404,
-    err500,
-    serveDirectoryWebApp,
-    serveWithContext,
-    throwError,
-    type (:>),
- )
-import Servant.API.EventStream (EventSource, EventStream)
-import Servant.HTML.Lucid (HTML)
-import Servant.Server.Generic (AsServer)
-import Servant.Types.SourceT qualified as S
-import Splitvajs (
-    Amount,
-    Expense (
-        expenseDate,
-        expenseId,
-        expensePaidBy,
-        expenseRubric,
-        expenseSplit,
-        expenseTotal
-    ),
-    ExpenseForm,
-    Person (personColor, personName),
-    Settlement (
-        settlementAmount,
-        settlementDate,
-        settlementFrom,
-        settlementTo
-    ),
-    Share (Share, shareAmount, sharePerson, shareType),
-    ShareType (Fixed, Percentage),
-    Split (splitShares),
-    Transaction (..),
-    findExpense,
-    formatDate,
-    people,
-    peopleOfExpense,
-    settlements,
-    shareTypeSymbol,
-    shareTypeToText,
-    simplifiedDebts,
-    singleDebtor,
-    toExpense,
- )
-import System.Timeout qualified
+import Splitvajs
 import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
-import Willys.Client (fetchProducts, fetchPromotions, runClientDefault)
-import Willys.Response (
-    ImageUrl (..),
-    Product (..),
-    Promotion (..),
-    StripAndLower,
-    getId,
-    getPrice,
-    getSavePrice,
- )
+import Willys.Response
 
 newtype Search = Search {unSearch :: Text}
     deriving stock (Generic, Show)
@@ -126,73 +49,6 @@ instance FromForm Search where
 
 newtype Products = Products {products :: [Product]}
     deriving stock (Generic, Show, Eq)
-
-data Env = Env
-    { envTransactionsFile :: !FilePath
-    , envShoppingListFile :: !FilePath
-    , envBroadcastChan :: !(Chan ServerEvent)
-    }
-
-newEnv :: FilePath -> FilePath -> IO Env
-newEnv trFile shopFile = Env trFile shopFile <$> newChan
-
-{- FOURMOLU_DISABLE -}
-data RootApi as = RootAPI
-    { homePageEP :: !(as :- Get '[HTML] NoContent)
-    , staticEP :: !(as :- "static" :> Raw)
-    , shoppingEP :: !(as :- "inkop" :> NamedRoutes ShoppingApi)
-    , splitEP :: !(as :- "split" :> NamedRoutes SplitApi)
-    }
-    deriving stock (Generic)
-
-data ShoppingApi as = ShoppingApi
-    { shoppingPageEP :: !(as :- Get '[HTML] ShoppingPage)
-    , removeCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] [ShoppingItem])
-    , removeAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem])
-    , sseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
-    , productListEP 
-        :: !(as 
-        :- "produkter" 
-        :> ReqBody '[FormUrlEncoded] Search 
-        :> Post '[HTML] ProductSearchList)
-    , addProductEP 
-        :: !(as :- "lagg-till" 
-        :> ReqBody '[JSON] Product 
-        :> Post '[HTML] [ShoppingItem])
-    , toggleProductEP 
-        :: !(as :- "toggla" 
-        :> ReqBody '[JSON] Product 
-        :> Post '[HTML] NoContent)
-    }
-    deriving stock (Generic)
-
-data SplitApi as = SplitApi
-    { splitPageEP :: !(as :- Get '[HTML] SplitPage)
-    , settleUpEP :: !(as :- "gor-upp" :> Post '[HTML] Transactions)
-    , removeExpenseEp 
-        :: !(as 
-        :- "ta-bort" 
-        :> Capture "id" UUID 
-        :> Delete '[HTML] NoContent)
-    , newExpenseEP 
-        :: !(as :- "lagg-till" 
-        :> ReqBody '[FormUrlEncoded] ExpenseForm 
-        :> Post '[HTML] Transactions)
-    , editExpensePageEP 
-        :: !(as 
-        :- "redigera" 
-        :> Capture "id" UUID 
-        :> Get '[HTML] EditExpensePage)
-    , saveExpenseEP 
-        :: !(as 
-        :- "spara" 
-        :> Capture "id" UUID 
-        :> ReqBody '[FormUrlEncoded] ExpenseForm 
-        :> Patch '[HTML] EditExpensePage)
-    }
-    deriving stock (Generic)
-
-{- FOURMOLU_ENABLE -}
 
 data Feedback = Success | Failure
     deriving stock (Show, Eq)
@@ -208,268 +64,6 @@ instance ToHtml FeedbackMessage where
         span_ [classes_ ["toast", "toast-fail"]] $
             toHtml msg
     toHtmlRaw = toHtml
-
-app :: Env -> Application
-app env =
-    serveWithContext
-        (Proxy @(NamedRoutes RootApi))
-        (customFormatters :. EmptyContext)
-        (server env)
-  where
-    customFormatters :: ErrorFormatters
-    customFormatters =
-        defaultErrorFormatters
-            { notFoundErrorFormatter = const (err404' Nothing)
-            }
-
-err404' :: Maybe Text -> ServerError
-err404' msg =
-    err404
-        { errBody =
-            renderBS $
-                toHtml (Page404 (Maybe.fromMaybe "Inget att se här..." msg))
-        }
-
-server :: Env -> RootApi AsServer
-server env =
-    RootAPI
-        { homePageEP = redirect "/split"
-        , staticEP = serveDirectoryWebApp "static"
-        , shoppingEP =
-            ShoppingApi
-                { shoppingPageEP = shoppingPageH env
-                , productListEP = productListH addToShoppingList
-                , addProductEP = addProductH env
-                , toggleProductEP = toggleProductH env
-                , removeCheckedEP = removeCheckedH env
-                , removeAllEP = removeAllH env
-                , sseEP = sseH env
-                }
-        , splitEP =
-            SplitApi
-                { splitPageEP = splitPageH env
-                , newExpenseEP = newExpenseH env
-                , settleUpEP = settleUpH env
-                , editExpensePageEP = editExpensePageH env
-                , saveExpenseEP = saveExpenseH env
-                , removeExpenseEp = removeExpenseH env
-                }
-        }
-
-removeExpenseH :: Env -> UUID -> Handler NoContent
-removeExpenseH env uuid = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> do
-            liftIO $
-                LBS.writeFile
-                    (envTransactionsFile env)
-                    (encode (deleteExpense ts))
-            hxRedirect "/split"
-        Left err -> liftIO (print err) >> throwError err500
-  where
-    deleteExpense :: [Transaction] -> [Transaction]
-    deleteExpense [] = []
-    deleteExpense (x : xs)
-        | ExpenseTransaction e <- x, uuid == expenseId e = xs
-        | otherwise = x : deleteExpense xs
-
-saveExpenseH :: Env -> UUID -> ExpenseForm -> Handler EditExpensePage
-saveExpenseH env uuid form = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> do
-            let newTs = map replaceExpense ts
-            liftIO $ LBS.writeFile (envTransactionsFile env) (encode newTs)
-            let mexp = findExpense uuid newTs
-            case (mexp, mexp >>= singleDebtor) of
-                (Just e, Just debtor) ->
-                    return $
-                        EditExpensePage
-                            e
-                            debtor
-                            (Just (FeedbackMessage Success "Utgift sparad"))
-                _ -> throwError $ err404' (Just "Ingen sådan utgift hittades")
-        Left err -> liftIO (print err) >> throwError err500
-  where
-    replaceExpense :: Transaction -> Transaction
-    replaceExpense (ExpenseTransaction e) =
-        if expenseId e == uuid
-            then
-                ExpenseTransaction
-                    (toExpense form (expenseId e) (expenseDate e))
-            else ExpenseTransaction e
-    replaceExpense t = t
-
-editExpensePageH :: Env -> UUID -> Handler EditExpensePage
-editExpensePageH env uuid = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> do
-            let expense = findExpense uuid ts
-            case expense of
-                Just e -> case singleDebtor e of
-                    Just share -> return $ EditExpensePage e share Nothing
-                    Nothing -> throwError $ err404' (Just moreThanTwoError)
-                Nothing ->
-                    throwError $
-                        err404' (Just "Ingen sådan utgift hittades")
-        Left err -> liftIO (print err) >> throwError err500
-  where
-    moreThanTwoError =
-        "Just nu stöds inte \
-        \redigering av utgifter med fler deltagare än två"
-
-settleUpH :: Env -> Handler Transactions
-settleUpH env = do
-    utc <- liftIO Time.getCurrentTime
-    tz <- liftIO Time.getCurrentTimeZone
-    writeTransactionsHandlerHelper
-        env
-        (\ts -> map SettlementTransaction (settlements tz utc ts) <> ts)
-
-newExpenseH :: Env -> ExpenseForm -> Handler Transactions
-newExpenseH env form = do
-    utc <- liftIO Time.getCurrentTime
-    tz <- liftIO Time.getCurrentTimeZone
-    uuid <- liftIO UUID.nextRandom
-    writeTransactionsHandlerHelper
-        env
-        ( ExpenseTransaction
-            (toExpense form uuid (Time.utcToLocalTime tz utc))
-            :
-        )
-
-writeTransactionsHandlerHelper ::
-    Env ->
-    ([Transaction] -> [Transaction]) ->
-    Handler Transactions
-writeTransactionsHandlerHelper env genNewTs = liftIO $ do
-    res <- BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> do
-            let newTs = genNewTs ts
-            LBS.writeFile (envTransactionsFile env) (encode newTs)
-            return (Transactions newTs)
-        Left err -> print err >> return (Transactions [])
-
-splitPageH :: Env -> Handler SplitPage
-splitPageH env = liftIO $ do
-    res <- BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> return (SplitPage ts)
-        Left err -> print err >> return (SplitPage [])
-
-sseH :: Env -> Handler EventSource
-sseH env = liftIO $ do
-    chan <- dupChan (envBroadcastChan env)
-    return $ S.fromStepT (S.Yield keepAlive (rest chan))
-  where
-    rest :: Chan ServerEvent -> S.StepT IO ServerEvent
-    rest chan = S.Effect $ do
-        msg <- System.Timeout.timeout (15 * 1000000) (readChan chan)
-        return $ case msg of
-            Just m -> S.Yield m (rest chan)
-            Nothing -> S.Yield keepAlive (rest chan)
-
-    keepAlive :: ServerEvent
-    keepAlive = CommentEvent (Builder.fromByteString "keep-alive")
-
-toggle :: Checkbox -> Checkbox
-toggle Checked = Unchecked
-toggle Unchecked = Checked
-
-removeAllH :: Env -> Handler [ShoppingItem]
-removeAllH env =
-    liftIO $
-        LBS.writeFile (envShoppingListFile env) "[]"
-            >> return []
-
-removeCheckedH :: Env -> Handler [ShoppingItem]
-removeCheckedH env = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Right ps ->
-            let newItems = filter ((== Unchecked) . siCheck) ps
-             in updateAndBroadCast env newItems
-        Left err -> print err >> return []
-
-toggleProductH :: Env -> Product -> Handler NoContent
-toggleProductH env product' = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Right ps -> void $ updateAndBroadCast env (map toggleItem ps)
-        Left err -> print err
-    return NoContent
-  where
-    toggleItem :: ShoppingItem -> ShoppingItem
-    toggleItem i
-        | siProduct i == product' = i{siCheck = toggle (siCheck i)}
-        | otherwise = i
-
-asServerEvent :: (ToHtml a) => [a] -> ServerEvent
-asServerEvent =
-    ServerEvent Nothing Nothing
-        . map (Builder.fromLazyByteString . renderBS . toHtml)
-
-shoppingPageH :: Env -> Handler ShoppingPage
-shoppingPageH env = liftIO $ do
-    fetchedPromotions <- runClientDefault fetchPromotions
-    shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
-    case shoppingItems of
-        Left err -> putStrLn err >> return (ShoppingPage mempty mempty mempty)
-        Right list ->
-            return
-                ( ShoppingPage
-                    mempty
-                    (Either.fromRight mempty fetchedPromotions)
-                    (Just list)
-                )
-
-addProductH :: Env -> Product -> Handler [ShoppingItem]
-addProductH env product' = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Right ps ->
-            let newList = ShoppingItem product' Unchecked : ps
-             in updateAndBroadCast env newList
-        Left err -> print err >> return []
-
-hxRedirect :: BS.ByteString -> Handler a
-hxRedirect url = throwError err303{errHeaders = [("HX-Redirect", url)]}
-
-redirect :: BS.ByteString -> Handler a
-redirect url = throwError err303{errHeaders = [(hLocation, url)]}
-
-updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
-updateAndBroadCast env items =
-    LBS.writeFile (envShoppingListFile env) (encode items)
-        >> writeChan (envBroadcastChan env) (asServerEvent items)
-        >> return items
-
-productListH ::
-    (Product -> [Attribute]) ->
-    Search ->
-    Handler ProductSearchList
-productListH attributes search = liftIO $ do
-    res <- runClientDefault (fetchProducts (unSearch search))
-    case res of
-        Left err ->
-            print err
-                >> return
-                    ( ProductSearchList
-                        mempty
-                        mempty
-                        "Sökresultat"
-                        "searched-products"
-                    )
-        Right products ->
-            return $
-                ProductSearchList
-                    attributes
-                    products
-                    "Sökresultat"
-                    "searched-products"
 
 baseTemplate :: (Monad m) => HtmlT m b -> HtmlT m b
 baseTemplate content = baseTemplate' (navbar_ >> content)

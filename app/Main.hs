@@ -2,7 +2,8 @@ module Main (main) where
 
 import Network.Wai.Handler.Warp (run)
 import Safe (readMay)
-import Server (app, newEnv)
+import Server.App (app)
+import Server.Env (newEnv)
 import System.Environment (getArgs)
 
 main :: IO ()
