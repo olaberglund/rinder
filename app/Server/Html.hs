@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-
+{- | This module exposes data types with ToHTML instances for the server's
+endpoints, but also an onclick event for a product.
+-}
 module Server.Html (
     Checkbox (..),
     EditExpensePage (..),
@@ -9,6 +10,7 @@ module Server.Html (
     ProductSearchList (..),
     Search (..),
     ShoppingItem (..),
+    ShoppingItems (..),
     ShoppingPage (..),
     SplitPage (..),
     Transactions (..),
@@ -31,12 +33,15 @@ import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import Deriving.Aeson (CustomJSON (..))
 import GHC.Generics (Generic)
+import Inter.Language (Language, flag, mkApiHref, mkHref, toHref)
+import Inter.Lexicon (l, l_)
+import Inter.Lexicon qualified as Lexicon
 import Lucid
 import Lucid.Base qualified
 import Lucid.Htmx qualified as HX
 import Numeric (showFFloat)
 import Safe (headMay)
-import Splitvajs
+import Split
 import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
 import Willys.Response
 
@@ -65,8 +70,8 @@ instance ToHtml FeedbackMessage where
             toHtml msg
     toHtmlRaw = toHtml
 
-baseTemplate :: (Monad m) => HtmlT m b -> HtmlT m b
-baseTemplate content = baseTemplate' (navbar_ >> content)
+baseTemplate :: (Monad m) => Language -> HtmlT m b -> HtmlT m b
+baseTemplate lang content = baseTemplate' (navbar_ lang >> content)
 
 baseTemplate' :: (Monad m) => HtmlT m b -> HtmlT m b
 baseTemplate' content = do
@@ -98,19 +103,31 @@ baseTemplate' content = do
             content
   where
 
-data Page404 = Page404 !Text
+data Page404 = Page404 !Language !Text
     deriving stock (Show, Eq)
 
 instance ToHtml Page404 where
-    toHtml (Page404 mtext) = baseTemplate $ do
+    toHtml (Page404 lang mtext) = baseTemplate lang $ do
         h1_ "404"
         p_ $ toHtml $ mtext
     toHtmlRaw = toHtml
 
-navbar_ :: (Monad m) => HtmlT m ()
-navbar_ = nav_ $ ul_ $ do
-    li_ (a_ [href_ "/inkop"] "Inköpslista")
-    li_ (a_ [href_ "/split"] "Split")
+navbar_ :: (Monad m) => Language -> HtmlT m ()
+navbar_ lang = nav_ $ ul_ $ do
+    span_ [id_ "language-links"] $ do
+        mapM_
+            (\(lang', flag') -> li_ (a_ [class_ "language-link", href_ (toHref lang')] flag'))
+            (zip (enumFrom minBound) (map (toHtml . flag) (enumFrom minBound)))
+    li_
+        ( a_
+            [href_ $ mkHref lang "/inkop"]
+            (l_ lang Lexicon.NavbarShoppingList)
+        )
+    li_
+        ( a_
+            [href_ $ mkHref lang "/split"]
+            (l_ lang Lexicon.NavbarSplit)
+        )
 
 data ProductSearchList
     = ProductSearchList
@@ -150,9 +167,9 @@ instance ToHtml ProductSearchList where
                 )
                 products
 
-addToShoppingList :: Product -> [Attribute]
-addToShoppingList p =
-    [ HX.hxPost_ "/inkop/lagg-till"
+addToShoppingList :: Language -> Product -> [Attribute]
+addToShoppingList lang p =
+    [ HX.hxPost_ (mkHref lang "/inkop/lagg-till")
     , HX.hxTarget_ "#shopping-list"
     , HX.hxSwap_ "outerHTML"
     , HX.hxExt_ "json-enc"
@@ -160,63 +177,63 @@ addToShoppingList p =
     ]
 
 data ShoppingPage
-    = ShoppingPage ![Product] ![Promotion] !(Maybe [ShoppingItem])
+    = ShoppingPage !Language ![Product] ![Promotion] !(Maybe [ShoppingItem])
     deriving stock (Show, Eq)
 
 instance ToHtml ShoppingPage where
-    toHtml (ShoppingPage products promotions shoppingList) = baseTemplate $ do
-        h1_ "Veckans inköpslista"
+    toHtml (ShoppingPage lang products promotions shoppingList) = baseTemplate lang $ do
+        h1_ $ l_ lang Lexicon.WeeksShoppingList
         div_ [class_ "tabs"] $ do
             button_
                 [ id_ "default-open"
                 , class_ "tab"
                 , onclick_ "openTab(event, 'shopping-list-container')"
                 ]
-                "Inköpslista"
+                (l_ lang Lexicon.ShoppingList)
             button_
                 [ class_ "tab"
                 , onclick_ "openTab(event, 'promotions-container')"
                 ]
-                "Erbjudanden"
+                (l_ lang Lexicon.Offers)
             button_
                 [ class_ "tab"
                 , onclick_ "openTab(event, 'product-search-container')"
                 ]
-                "Sök"
+                (l_ lang Lexicon.Search)
         div_ [id_ "product-search-container", class_ "tabcontent"] $ do
-            h2_ "Sök och lägg till produkter"
+            h2_ (l_ lang Lexicon.SearchAndAddProduct)
             form_ [class_ "gapped-form"] $
-                productSearch_ mempty "/inkop/produkter" products
+                productSearch_ lang mempty (mkApiHref "/inkop/produkter") products
         div_ [id_ "promotions-container", class_ "tabcontent"] $ do
-            h2_ "Veckans erbjudanden"
+            h2_ (l_ lang Lexicon.WeeksOffers)
             toHtml $
                 ProductSearchList
-                    addToShoppingList
+                    (addToShoppingList lang)
                     (coerce promotions)
-                    "Erbjudanden"
+                    (l lang Lexicon.Offers)
                     "promotion-products"
         div_ [id_ "shopping-list-container", class_ "tabcontent"] $ do
-            h2_ "Din inköpslista"
+            h2_ (l_ lang Lexicon.YourShoppingList)
             div_ [class_ "shopping-list-buttons"] $ do
                 button_
                     [ class_ "remove-all-button"
                     , type_ "button"
-                    , HX.hxDelete_ "/inkop/ta-bort-alla"
+                    , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort-alla"
                     , HX.hxTarget_ "#shopping-list"
                     , HX.hxSwap_ "outerHTML"
                     ]
-                    "Ta bort alla"
+                    (l_ lang Lexicon.RemoveAll)
                 button_
                     [ class_ "remove-checked-button"
                     , type_ "button"
-                    , HX.hxDelete_ "/inkop/ta-bort"
+                    , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort"
                     , HX.hxTarget_ "#shopping-list"
                     , HX.hxSwap_ "outerHTML"
                     ]
-                    "Ta bort markerade"
+                    (l_ lang Lexicon.RemoveMarked)
             case shoppingList of
-                Nothing -> p_ "Något gick fel..."
-                Just list -> toHtml list
+                Nothing -> p_ (l_ lang Lexicon.SomethingWentWrong)
+                Just list -> toHtml (ShoppingItems list)
     toHtmlRaw = toHtml
 
 data Checkbox = Checked | Unchecked
@@ -231,12 +248,15 @@ instance ToHtml ShoppingItem where
     toHtml item = shoppingItem_ item
     toHtmlRaw = toHtml
 
-instance ToHtml [ShoppingItem] where
+data ShoppingItems = ShoppingItems [ShoppingItem]
+    deriving stock (Generic, Show, Eq)
+
+instance ToHtml ShoppingItems where
     toHtmlRaw = toHtml
-    toHtml items = div_
+    toHtml (ShoppingItems items) = div_
         [ id_ "shopping-list"
         , HX.hxExt_ "sse"
-        , hxSseConnect_ "/inkop/sse"
+        , hxSseConnect_ (mkApiHref "/inkop/sse")
         , hxSseSwap_ "message"
         ]
         $ do
@@ -259,7 +279,7 @@ shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
             , id_ (getId (siProduct item))
             , name_ "name"
             , value_ (productName (siProduct item))
-            , HX.hxPost_ "/inkop/toggla"
+            , HX.hxPost_ (mkApiHref "/inkop/toggla")
             , HX.hxExt_ "json-enc"
             , HX.hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
             , autocomplete_ "off"
@@ -270,16 +290,19 @@ shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
 
 productSearch_ ::
     (Monad m) =>
+    Language ->
+    -- | onclick for a product
     (Product -> [Attribute]) ->
+    -- | POST url
     Text ->
     [Product] ->
     HtmlT m ()
-productSearch_ attributes posturl products = do
+productSearch_ lang attributes posturl products = do
     div_ [class_ "form-group"] $ do
         button_ [type_ "submit", disabled_ "true", style_ "display: none"] ""
-        label_ [for_ "query"] "Produkt:"
+        label_ [for_ "query"] $ l_ lang Lexicon.Product
         input_
-            [ placeholder_ "Sök efter en produkt..."
+            [ placeholder_ (l lang Lexicon.SearchForAProduct)
             , id_ "query"
             , list_ "products"
             , name_ "query"
@@ -294,25 +317,27 @@ productSearch_ attributes posturl products = do
             , HX.hxSwap_ "outerHTML"
             , HX.hxParams_ "query"
             ]
-            "Visa"
-    toHtml (ProductSearchList attributes products "Sökresultat" listId)
+            (l_ lang Lexicon.Show)
+    toHtml (ProductSearchList attributes products (l lang Lexicon.SearchResults) listId)
   where
     listId = "searched-products"
 
+-- | Attribute for specifying the URL of the SSE server
 hxSseConnect_ :: Text -> Attribute
 hxSseConnect_ = Lucid.Base.makeAttribute "sse-connect"
 
+-- | Attribute for specifying the name of the message to swap into the DOM
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = Lucid.Base.makeAttribute "sse-swap"
 
-data SplitPage = SplitPage ![Transaction]
+data SplitPage = SplitPage !Language ![Transaction]
 
 instance ToHtml SplitPage where
     toHtmlRaw = toHtml
-    toHtml (SplitPage expenses) = baseTemplate $ do
+    toHtml (SplitPage lang expenses) = baseTemplate lang $ do
         h1_ "Splitvajs"
         fieldset_ $ do
-            legend_ "Lägg till en utgift"
+            legend_ (l_ lang Lexicon.AddExpenseLegend)
             form_
                 [ class_ "gapped-form"
                 , id_ "split-form"
@@ -320,10 +345,10 @@ instance ToHtml SplitPage where
                 ]
                 $ do
                     div_ [class_ "form-group"] $ do
-                        label_ [for_ "rubric"] "Rubrik:"
+                        label_ [for_ "rubric"] (l_ lang Lexicon.ExpenseRubric)
                         input_ [type_ "text", id_ "rubric", name_ "rubric"]
                     fieldset_ [class_ "radio-form-group"] $ do
-                        legend_ "Betalare"
+                        legend_ (l_ lang Lexicon.Paid)
                         mapM_
                             ( \p -> div_ [class_ "radio-group"] $ do
                                 input_ $
@@ -335,11 +360,13 @@ instance ToHtml SplitPage where
                                         <> if Just p == headMay people
                                             then [checked_]
                                             else mempty
-                                label_ [for_ (personName p)] (toHtml p)
+                                label_
+                                    [for_ (personName p)]
+                                    (toHtml (personName p))
                             )
                             people
                     fieldset_ [class_ "debt-form-group"] $ do
-                        legend_ "Skuld"
+                        legend_ (l_ lang Lexicon.Debt)
                         div_ [class_ "debtor-form-group"] $ do
                             select_ [name_ "debtor"] $ do
                                 mapM_
@@ -350,10 +377,10 @@ instance ToHtml SplitPage where
                                                     then [selected_ "selected"]
                                                     else mempty
                                             )
-                                            (toHtml p)
+                                            (toHtml (personName p))
                                     )
                                     people
-                            span_ [class_ "form-comment"] "ska betala"
+                            span_ [class_ "form-comment"] (l_ lang Lexicon.Pays)
                         div_ [class_ "debtor-form-group"] $ do
                             input_
                                 [ type_ "number"
@@ -363,12 +390,14 @@ instance ToHtml SplitPage where
                                 ]
                             select_ [name_ "share-type"] $ do
                                 option_
-                                    [ value_ "percentage"
+                                    [ value_ (shareTypeToText Percentage)
                                     , selected_ "selected"
                                     ]
-                                    "%"
-                                option_ [value_ "fixed"] "kr"
-                            span_ [class_ "form-comment"] "av"
+                                    (toHtml (shareTypeSymbol lang Percentage))
+                                option_
+                                    [value_ (shareTypeToText Fixed)]
+                                    (toHtml (shareTypeSymbol lang Fixed))
+                            span_ [class_ "form-comment"] (l_ lang Lexicon.Of)
                         div_ [class_ "debtor-form-group"] $ do
                             input_
                                 [ type_ "number"
@@ -376,69 +405,73 @@ instance ToHtml SplitPage where
                                 , name_ "total"
                                 , min_ "0"
                                 ]
-                            span_ "kr"
-                            span_ "*"
-                    small_ "*Resten betalas av den andre."
+                            span_ $ l_ lang Lexicon.Currency <> "*"
+                    small_ $ l_ lang Lexicon.RestIsPaidByOther
                     button_
                         [ type_ "submit"
-                        , HX.hxPost_ "/split/lagg-till"
+                        , HX.hxPost_ (mkHref lang "/split/lagg-till")
                         , HX.hxTarget_ "#tally-expenses-container"
                         , HX.hxSwap_ "outerHTML"
                         ]
-                        "Lägg till"
-        toHtml (Transactions expenses)
+                        (l_ lang Lexicon.Add)
+        toHtml (Transactions lang expenses)
+
+data Transactions = Transactions Language [Transaction]
 
 instance ToHtml Transactions where
     toHtmlRaw = toHtml
-    toHtml (Transactions transactions) = div_
+    toHtml (Transactions lang transactions) = div_
         [id_ "tally-expenses-container"]
         $ do
-            h2_ "Skulder"
+            h2_ (l_ lang Lexicon.Debts)
             if null settles
-                then p_ "Inga skulder att visa."
+                then p_ (l_ lang Lexicon.NoDebts)
                 else do
-                    div_ [class_ "tally-container"] $ mapM_ iou_ settles
+                    div_ [class_ "tally-container"] $ mapM_ (iou_ lang) settles
                     button_
                         [ type_ "submit"
-                        , HX.hxPost_ "/split/gor-upp"
+                        , HX.hxPost_ (mkHref lang "/split/gor-upp")
                         , HX.hxTarget_ "#tally-expenses-container"
                         , HX.hxSwap_ "outerHTML"
                         ]
-                        "Gör upp"
-            h2_ "Utgifter"
+                        (l_ lang Lexicon.Settle)
+            h2_ (l_ lang Lexicon.Expenses)
             if null transactions
-                then p_ "Inga utgifter att visa."
+                then p_ (l_ lang Lexicon.NoExpenses)
                 else div_ [class_ "expenses-container"] $ do
-                    mapM_ toHtml transactions
+                    mapM_ (toHtml . TransactionHtml lang) transactions
       where
         settles = simplifiedDebts transactions
 
-data Transactions = Transactions ![Transaction]
-    deriving stock (Show, Eq)
-
-iou_ :: (Monad m) => (Person, [(Person, Amount)]) -> HtmlT m ()
-iou_ (p, ious') = do
+iou_ :: (Monad m) => Language -> (Person, [(Person, Amount)]) -> HtmlT m ()
+iou_ lang (p, ious') = do
     span_
         [ class_ "creditor-name"
         , style_ $ "background-color: " <> personColor p
         ]
-        $ toHtml (personName p) <> " är skyldig:"
-    mapM_ debtItem_ ious'
+        $ toHtml
+        $ (personName p) <> " " <> l lang Lexicon.IsOwed
+    mapM_ (debtItem_ lang) ious'
 
-debtItem_ :: (Monad m) => (Person, Amount) -> HtmlT m ()
-debtItem_ (p, amount) =
+debtItem_ :: (Monad m) => Language -> (Person, Amount) -> HtmlT m ()
+debtItem_ lang (p, amount) =
     toHtml $
         personName p
             <> ": "
-            <> Text.pack (showFFloat (Just 2) amount "kr")
+            <> Text.pack
+                ( showFFloat
+                    (Just 2)
+                    (unAmount amount)
+                    (" " <> Text.unpack (l lang Lexicon.Currency))
+                )
 
-data EditExpensePage = EditExpensePage !Expense !Share !(Maybe FeedbackMessage)
+data EditExpensePage = EditExpensePage !Language !Expense !Share !(Maybe FeedbackMessage)
     deriving stock (Show, Eq)
 
 instance ToHtml EditExpensePage where
     toHtmlRaw = toHtml
-    toHtml (EditExpensePage e debtorShare message) = baseTemplate $ do
-        h1_ "Redigera utgift"
+    toHtml (EditExpensePage lang e debtorShare message) = baseTemplate lang $ do
+        h1_ (l_ lang Lexicon.EditExpense)
         form_
             [ class_ "gapped-form"
             , id_ "split-form"
@@ -446,7 +479,7 @@ instance ToHtml EditExpensePage where
             ]
             $ do
                 div_ [class_ "form-group"] $ do
-                    label_ [for_ "rubric"] "Rubrik:"
+                    label_ [for_ "rubric"] (l_ lang Lexicon.ExpenseRubric)
                     input_
                         [ type_ "text"
                         , id_ "rubric"
@@ -454,7 +487,7 @@ instance ToHtml EditExpensePage where
                         , value_ (expenseRubric e)
                         ]
                 fieldset_ [class_ "radio-form-group"] $ do
-                    legend_ "Betalare"
+                    legend_ (l_ lang Lexicon.Paid)
                     mapM_
                         ( \p -> div_ [class_ "radio-group"] $ do
                             input_ $
@@ -466,11 +499,11 @@ instance ToHtml EditExpensePage where
                                     <> if p == expensePaidBy e
                                         then [checked_]
                                         else mempty
-                            label_ [for_ (personName p)] (toHtml p)
+                            label_ [for_ (personName p)] (toHtml (personName p))
                         )
                         (peopleOfExpense e)
                 fieldset_ [class_ "debt-form-group"] $ do
-                    legend_ "Skuld"
+                    legend_ (l_ lang Lexicon.Debt)
                     div_ [class_ "debtor-form-group"] $ do
                         select_ [name_ "debtor"] $ do
                             mapM_
@@ -481,16 +514,16 @@ instance ToHtml EditExpensePage where
                                                 then [selected_ "selected"]
                                                 else []
                                         )
-                                        (toHtml p)
+                                        (toHtml (personName p))
                                 )
                                 (peopleOfExpense e)
-                        span_ [class_ "form-comment"] "ska betala"
+                        span_ [class_ "form-comment"] (l_ lang Lexicon.Pays)
                     div_ [class_ "debtor-form-group"] $ do
                         input_
                             [ type_ "number"
                             , id_ "amount"
                             , name_ "amount"
-                            , value_ (text $ shareAmount debtorShare)
+                            , value_ (text $ unAmount $ shareAmount debtorShare)
                             ]
                         select_
                             [ name_ "share-type"
@@ -505,83 +538,116 @@ instance ToHtml EditExpensePage where
                                                     then [selected_ "selected"]
                                                     else []
                                             )
-                                            (toHtml (shareTypeSymbol st))
+                                            (toHtml (shareTypeSymbol lang st))
                                     )
                                     [Percentage, Fixed]
-                        span_ [class_ "form-comment"] "av"
+                        span_ [class_ "form-comment"] (l_ lang Lexicon.Of)
                     div_ [class_ "debtor-form-group"] $ do
                         input_
                             [ type_ "number"
                             , id_ "total"
                             , name_ "total"
                             , min_ "0"
-                            , value_ (text $ expenseTotal e)
+                            , value_ (text $ unAmount $ expenseTotal e)
                             ]
-                        span_ "kr"
+                        span_ $ l_ lang Lexicon.Currency
                         span_ "*"
-                small_ "*Resten betalas av den andre."
+                small_ (l_ lang Lexicon.RestIsPaidByOther)
                 div_ [id_ "edit-action-buttons"] $ do
                     button_
                         [ type_ "submit"
-                        , HX.hxPatch_ ("/split/spara/" <> text (expenseId e))
+                        , HX.hxPatch_ (mkHref lang $ "/split/spara/" <> text (expenseId e))
                         , HX.hxTarget_ "body"
                         ]
-                        "Spara"
+                        (l_ lang Lexicon.Save)
                     button_
                         [ type_ "button"
-                        , HX.hxDelete_ ("/split/ta-bort/" <> text (expenseId e))
+                        , HX.hxDelete_ (mkHref lang $ "/split/ta-bort/" <> text (expenseId e))
                         , HX.hxSwap_ "none"
                         ]
-                        "Ta bort"
+                        (l_ lang Lexicon.Remove)
                 maybe mempty toHtml message
 
-instance ToHtml Transaction where
+-- | Convert a share type to text. Useful for use in name attributes in forms.
+shareTypeToText :: ShareType -> Text
+shareTypeToText Percentage = "percentage"
+shareTypeToText Fixed = "fixed"
+
+-- | Symbol for share type. Useful for displaying the share type in the UI.
+shareTypeSymbol :: Language -> ShareType -> Text
+shareTypeSymbol _ Percentage = "%"
+shareTypeSymbol lang Fixed = l lang Lexicon.Currency
+
+data TransactionHtml = TransactionHtml !Language !Transaction
+
+instance ToHtml TransactionHtml where
     toHtmlRaw = toHtml
-    toHtml (ExpenseTransaction e) = div_ [class_ "expense-container"] $ do
-        div_ [class_ "expense-info-container"] $ do
-            h3_ [class_ "expense-title", title_ (expenseRubric e)] $ do
-                toHtml $ expenseRubric e
-            div_ [class_ "date-container"] $ do
-                span_ $ toHtml $ formatDate $ expenseDate e
-                span_
-                    [ class_ "paid-by"
-                    , style_ $
-                        "background-color: "
-                            <> personColor (expensePaidBy e)
+    toHtml (TransactionHtml lang (ExpenseTransaction e)) =
+        div_ [class_ "expense-container"] $ do
+            div_ [class_ "expense-info-container"] $ do
+                h3_ [class_ "expense-title", title_ (expenseRubric e)] $ do
+                    toHtml $ expenseRubric e
+                div_ [class_ "date-container"] $ do
+                    span_ $ toHtml $ formatDate $ expenseDate e
+                    span_
+                        [ class_ "paid-by"
+                        , style_ $
+                            "background-color: "
+                                <> personColor (expensePaidBy e)
+                        ]
+                        $ toHtml
+                        $ personName (expensePaidBy e)
+                    a_
+                        [ class_ "edit-link"
+                        , href_ $ mkHref lang "/split/redigera/" <> text (expenseId e)
+                        ]
+                        (l_ lang Lexicon.Edit)
+            div_ [class_ "expense-data-container no-shrink"] $ do
+                span_ $
+                    toHtml $
+                        text (unAmount (expenseTotal e))
+                            <> " "
+                            <> l lang Lexicon.Currency
+                split_ e
+    toHtml (TransactionHtml lang (SettlementTransaction s)) =
+        div_ [class_ "expense-container"] $ do
+            div_ [class_ "expense-info-container"] $ do
+                h3_
+                    [ class_ "expense-title"
+                    , title_ $
+                        l lang Lexicon.PaymentTo
+                            <> " "
+                            <> personName (settlementTo s)
                     ]
                     $ toHtml
-                    $ personName (expensePaidBy e)
-                a_
-                    [ class_ "edit-link"
-                    , href_ $ "/split/redigera/" <> text (expenseId e)
-                    ]
-                    "Redigera"
-        div_ [class_ "expense-info-container no-shrink"] $ do
-            span_ $ toHtml $ show (expenseTotal e) <> "kr"
-            split_ e
-    toHtml (SettlementTransaction s) = div_ [class_ "expense-container"] $ do
-        div_ [class_ "expense-info-container"] $ do
-            h3_
-                [ class_ "expense-title"
-                , title_ $ "Swish till " <> personName (settlementTo s)
-                ]
-                $ "Swish till " <> toHtml (settlementTo s)
-            div_ [class_ "date-container"] $ do
-                span_ $ toHtml $ formatDate $ settlementDate s
-                span_
-                    [ class_ "paid-by"
-                    , style_ $ "background-color: " <> personColor (settlementFrom s)
-                    ]
-                    $ toHtml
-                    $ personName (settlementFrom s)
-        div_ [class_ "expense-info-container"] $ do
-            span_ $ toHtml $ show (settlementAmount s) <> "kr"
-            i_ [class_ "settle-icons"] "💸"
+                    $ l lang Lexicon.PaymentTo
+                        <> " "
+                        <> personName (settlementTo s)
+                div_ [class_ "date-container"] $ do
+                    span_ $ toHtml $ formatDate $ settlementDate s
+                    span_
+                        [ class_ "paid-by"
+                        , style_ $
+                            "background-color: "
+                                <> personColor (settlementFrom s)
+                        ]
+                        $ toHtml
+                        $ personName (settlementFrom s)
+            div_ [class_ "expense-data-container"] $ do
+                span_ $
+                    toHtml $
+                        text (unAmount (settlementAmount s))
+                            <> " "
+                            <> l lang Lexicon.Currency
+                i_ [class_ "settle-icons"] "💸"
 
 split_ :: (Monad m) => Expense -> HtmlT m ()
 split_ expense = div_ [class_ "split-container"] $ do
     pieChart_ expense 50
 
+{- | Pie chart for expense split. Size is in pixels.
+Colors are based on the person's color.
+-}
 pieChart_ :: (Monad m) => Expense -> Int -> HtmlT m ()
 pieChart_ e size =
     div_
@@ -610,10 +676,10 @@ pieChart_ e size =
 
     genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
     genColorText _ (sum', txt) (Share Percentage p sh _) =
-        ( sum' + sh
+        ( sum' + unAmount sh
         , txt
             <> [ colorShare (personColor p) sum'
-               , colorShare (personColor p) (sum' + sh)
+               , colorShare (personColor p) (sum' + unAmount sh)
                ]
         )
     genColorText total (sum', txt) (Share Fixed p sh _) =
@@ -625,7 +691,10 @@ pieChart_ e size =
         )
       where
         toPercent :: Amount -> Float
-        toPercent = (* 100) . (/ total)
+        toPercent = (* 100) . coerce . (/ total)
 
+-- | helper function to convert a Showable to a Text
 text :: (Show a) => a -> Text
 text = Text.pack . show
+
+-- lang = Lexicon.EN

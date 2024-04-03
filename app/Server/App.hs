@@ -1,5 +1,10 @@
+{- | This module defines the server application which is simply a composition of
+the API and the handlers.
+-}
 module Server.App (app) where
 
+import Data.Text.Encoding qualified as Text
+import Inter.Language (Language (..), mkHref)
 import Servant (
     NamedRoutes,
     Proxy (Proxy),
@@ -12,6 +17,7 @@ import Server.Env (Env)
 import Server.Handler
 import Server.Html
 
+-- | The WAI application
 app :: Env -> Application
 app env =
     serveWithContext
@@ -21,26 +27,32 @@ app env =
 
 server :: Env -> RootApi AsServer
 server env =
-    RootAPI
-        { homePageEP = redirect "/split"
+    RootApi
+        { homePageEP = redirect (home SE)
         , staticEP = serveDirectoryWebApp "static"
-        , shoppingEP =
-            ShoppingApi
-                { shoppingPageEP = shoppingPageH env
-                , productListEP = productListH addToShoppingList
-                , addProductEP = addProductH env
-                , toggleProductEP = toggleProductH env
-                , removeCheckedEP = removeCheckedH env
-                , removeAllEP = removeAllH env
-                , sseEP = sseH env
-                }
-        , splitEP =
-            SplitApi
-                { splitPageEP = splitPageH env
-                , newExpenseEP = newExpenseH env
-                , settleUpEP = settleUpH env
-                , editExpensePageEP = editExpensePageH env
-                , saveExpenseEP = saveExpenseH env
-                , removeExpenseEp = removeExpenseH env
+        , pagesEP = \lang ->
+            PagesApi
+                { languageHomePageEP = redirect (home lang)
+                , shoppingEP =
+                    ShoppingApi
+                        { shoppingPageEP = shoppingPageH env lang
+                        , productListEP = productListH lang (addToShoppingList lang)
+                        , addProductEP = addProductH env
+                        , toggleProductEP = toggleProductH env
+                        , removeCheckedEP = removeCheckedH env
+                        , removeAllEP = removeAllH env
+                        , sseEP = sseH env
+                        }
+                , splitEP =
+                    SplitApi
+                        { splitPageEP = splitPageH env lang
+                        , newExpenseEP = newExpenseH env lang
+                        , settleUpEP = settleUpH env lang
+                        , editExpensePageEP = editExpensePageH env lang
+                        , saveExpenseEP = saveExpenseH env lang
+                        , removeExpenseEp = removeExpenseH env
+                        }
                 }
         }
+  where
+    home lang = Text.encodeUtf8 $ mkHref lang "/split"

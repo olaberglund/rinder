@@ -69,4 +69,15 @@ function openTab(evt, divId) {
   document.getElementById(divId).style.display = "block";
   evt.currentTarget.className += " active";
 }
-document.getElementById("default-open").click();
+document?.getElementById("default-open")?.click();
+
+function stripLanguage(href) {
+  return href.slice(href.indexOf("/", 1));
+}
+
+// inject the current href into hrefs of all a tags with class "language-link"
+document.querySelectorAll(".language-link").forEach((el) => {
+  el.href
+    ? (el.href = el.href + stripLanguage(window.location.pathname))
+    : (el.href = stripLanguage(window.location.pathname));
+});

@@ -1,5 +1,6 @@
 module Main (main) where
 
+-- import Lexicon qualified
 import Network.Wai.Handler.Warp (run)
 import Safe (readMay)
 import Server.App (app)

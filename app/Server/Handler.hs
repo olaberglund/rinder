@@ -1,4 +1,23 @@
-module Server.Handler where
+{- |  This module contains the handlers for the server. The handlers are
+responsible for handling the requests and returning the appropriate responses.
+-}
+module Server.Handler (
+    addProductH,
+    customFormatters,
+    editExpensePageH,
+    newExpenseH,
+    productListH,
+    redirect,
+    removeAllH,
+    removeCheckedH,
+    removeExpenseH,
+    saveExpenseH,
+    settleUpH,
+    shoppingPageH,
+    splitPageH,
+    sseH,
+    toggleProductH,
+) where
 
 import Control.Concurrent (Chan, dupChan, readChan, writeChan)
 import Control.Monad (void)
@@ -17,6 +36,9 @@ import Data.Text (Text)
 import Data.Time qualified as Time
 import Data.UUID (UUID)
 import Data.UUID.V4 qualified as UUID
+import Inter.Language (Language)
+import Inter.Lexicon (l)
+import Inter.Lexicon qualified as Lexicon
 import Lucid (Attribute, ToHtml (toHtml), renderBS)
 import Network.HTTP.Types (hLocation)
 import Network.Wai.EventSource (ServerEvent (..))
@@ -35,23 +57,23 @@ import Servant.Server (defaultErrorFormatters)
 import Servant.Types.SourceT qualified as S
 import Server.Env
 import Server.Html
-import Splitvajs
+import Split
 import System.Timeout qualified
 import Willys.Client
 import Willys.Response
 
-customFormatters :: ErrorFormatters
-customFormatters =
+customFormatters :: Language -> ErrorFormatters
+customFormatters lang =
     defaultErrorFormatters
-        { notFoundErrorFormatter = const (err404' Nothing)
+        { notFoundErrorFormatter = const (err404' lang Nothing)
         }
 
-err404' :: Maybe Text -> ServerError
-err404' msg =
+err404' :: Language -> Maybe Text -> ServerError
+err404' lang msg =
     err404
         { errBody =
             renderBS $
-                toHtml (Page404 (Maybe.fromMaybe "Inget att se här..." msg))
+                toHtml (Page404 lang (Maybe.fromMaybe "Inget att se här..." msg))
         }
 
 removeExpenseH :: Env -> UUID -> Handler NoContent
@@ -72,8 +94,8 @@ removeExpenseH env uuid = do
         | ExpenseTransaction e <- x, uuid == expenseId e = xs
         | otherwise = x : deleteExpense xs
 
-saveExpenseH :: Env -> UUID -> ExpenseForm -> Handler EditExpensePage
-saveExpenseH env uuid form = do
+saveExpenseH :: Env -> Language -> UUID -> ExpenseForm -> Handler EditExpensePage
+saveExpenseH env lang uuid form = do
     res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
@@ -84,10 +106,11 @@ saveExpenseH env uuid form = do
                 (Just e, Just debtor) ->
                     return $
                         EditExpensePage
+                            lang
                             e
                             debtor
                             (Just (FeedbackMessage Success "Utgift sparad"))
-                _ -> throwError $ err404' (Just "Ingen sådan utgift hittades")
+                _ -> throwError $ err404' lang (Just "Ingen sådan utgift hittades")
         Left err -> liftIO (print err) >> throwError err500
   where
     replaceExpense :: Transaction -> Transaction
@@ -99,40 +122,42 @@ saveExpenseH env uuid form = do
             else ExpenseTransaction e
     replaceExpense t = t
 
-editExpensePageH :: Env -> UUID -> Handler EditExpensePage
-editExpensePageH env uuid = do
+editExpensePageH :: Env -> Language -> UUID -> Handler EditExpensePage
+editExpensePageH env lang uuid = do
     res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
             let expense = findExpense uuid ts
             case expense of
                 Just e -> case singleDebtor e of
-                    Just share -> return $ EditExpensePage e share Nothing
-                    Nothing -> throwError $ err404' (Just moreThanTwoError)
+                    Just share -> return $ EditExpensePage lang e share Nothing
+                    Nothing -> throwError $ err404' lang (Just moreThanTwoError)
                 Nothing ->
                     throwError $
-                        err404' (Just "Ingen sådan utgift hittades")
+                        err404' lang (Just "Ingen sådan utgift hittades")
         Left err -> liftIO (print err) >> throwError err500
   where
     moreThanTwoError =
         "Just nu stöds inte \
         \redigering av utgifter med fler deltagare än två"
 
-settleUpH :: Env -> Handler Transactions
-settleUpH env = do
+settleUpH :: Env -> Language -> Handler Transactions
+settleUpH env lang = do
     utc <- liftIO Time.getCurrentTime
     tz <- liftIO Time.getCurrentTimeZone
     writeTransactionsHandlerHelper
         env
+        lang
         (\ts -> map SettlementTransaction (settlements tz utc ts) <> ts)
 
-newExpenseH :: Env -> ExpenseForm -> Handler Transactions
-newExpenseH env form = do
+newExpenseH :: Env -> Language -> ExpenseForm -> Handler Transactions
+newExpenseH env lang form = do
     utc <- liftIO Time.getCurrentTime
     tz <- liftIO Time.getCurrentTimeZone
     uuid <- liftIO UUID.nextRandom
     writeTransactionsHandlerHelper
         env
+        lang
         ( ExpenseTransaction
             (toExpense form uuid (Time.utcToLocalTime tz utc))
             :
@@ -140,23 +165,24 @@ newExpenseH env form = do
 
 writeTransactionsHandlerHelper ::
     Env ->
+    Language ->
     ([Transaction] -> [Transaction]) ->
     Handler Transactions
-writeTransactionsHandlerHelper env genNewTs = liftIO $ do
+writeTransactionsHandlerHelper env lang genNewTs = liftIO $ do
     res <- BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
             let newTs = genNewTs ts
             LBS.writeFile (envTransactionsFile env) (encode newTs)
-            return (Transactions newTs)
-        Left err -> print err >> return (Transactions [])
+            return (Transactions lang newTs)
+        Left err -> print err >> return (Transactions lang [])
 
-splitPageH :: Env -> Handler SplitPage
-splitPageH env = liftIO $ do
+splitPageH :: Env -> Language -> Handler SplitPage
+splitPageH env lang = liftIO $ do
     res <- BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
-        Right ts -> return (SplitPage ts)
-        Left err -> print err >> return (SplitPage [])
+        Right ts -> return (SplitPage lang ts)
+        Left err -> print err >> return (SplitPage lang [])
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
@@ -177,20 +203,20 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllH :: Env -> Handler [ShoppingItem]
+removeAllH :: Env -> Handler ShoppingItems
 removeAllH env =
     liftIO $
         LBS.writeFile (envShoppingListFile env) "[]"
-            >> return []
+            >> return (ShoppingItems [])
 
-removeCheckedH :: Env -> Handler [ShoppingItem]
+removeCheckedH :: Env -> Handler ShoppingItems
 removeCheckedH env = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newItems = filter ((== Unchecked) . siCheck) ps
              in updateAndBroadCast env newItems
-        Left err -> print err >> return []
+        Left err -> print err >> return (ShoppingItems [])
 
 toggleProductH :: Env -> Product -> Handler NoContent
 toggleProductH env product' = liftIO $ do
@@ -210,28 +236,29 @@ asServerEvent =
     ServerEvent Nothing Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
 
-shoppingPageH :: Env -> Handler ShoppingPage
-shoppingPageH env = liftIO $ do
+shoppingPageH :: Env -> Language -> Handler ShoppingPage
+shoppingPageH env lang = liftIO $ do
     fetchedPromotions <- runClientDefault fetchPromotions
     shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
     case shoppingItems of
-        Left err -> putStrLn err >> return (ShoppingPage mempty mempty mempty)
+        Left err -> putStrLn err >> return (ShoppingPage lang mempty mempty mempty)
         Right list ->
             return
                 ( ShoppingPage
+                    lang
                     mempty
                     (Either.fromRight mempty fetchedPromotions)
                     (Just list)
                 )
 
-addProductH :: Env -> Product -> Handler [ShoppingItem]
+addProductH :: Env -> Product -> Handler ShoppingItems
 addProductH env product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newList = ShoppingItem product' Unchecked : ps
              in updateAndBroadCast env newList
-        Left err -> print err >> return []
+        Left err -> print err >> return (ShoppingItems [])
 
 hxRedirect :: BS.ByteString -> Handler a
 hxRedirect url = throwError err303{errHeaders = [("HX-Redirect", url)]}
@@ -239,17 +266,18 @@ hxRedirect url = throwError err303{errHeaders = [("HX-Redirect", url)]}
 redirect :: BS.ByteString -> Handler a
 redirect url = throwError err303{errHeaders = [(hLocation, url)]}
 
-updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
+updateAndBroadCast :: Env -> [ShoppingItem] -> IO ShoppingItems
 updateAndBroadCast env items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan (envBroadcastChan env) (asServerEvent items)
-        >> return items
+        >> return (ShoppingItems items)
 
 productListH ::
+    Language ->
     (Product -> [Attribute]) ->
     Search ->
     Handler ProductSearchList
-productListH attributes search = liftIO $ do
+productListH lang attributes search = liftIO $ do
     res <- runClientDefault (fetchProducts (unSearch search))
     case res of
         Left err ->
@@ -258,7 +286,7 @@ productListH attributes search = liftIO $ do
                     ( ProductSearchList
                         mempty
                         mempty
-                        "Sökresultat"
+                        (l lang Lexicon.SearchResults)
                         "searched-products"
                     )
         Right products ->
@@ -266,5 +294,5 @@ productListH attributes search = liftIO $ do
                 ProductSearchList
                     attributes
                     products
-                    "Sökresultat"
+                    (l lang Lexicon.SearchResults)
                     "searched-products"

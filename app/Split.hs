@@ -1,5 +1,5 @@
-module Splitvajs (
-    Amount,
+module Split (
+    Amount (..),
     Expense (..),
     ExpenseForm,
     Person (..),
@@ -16,8 +16,6 @@ module Splitvajs (
     simplifiedDebts,
     singleDebtor,
     toExpense,
-    shareTypeSymbol,
-    shareTypeToText,
 ) where
 
 import Control.Arrow qualified as Arrow
@@ -33,7 +31,6 @@ import Data.Text qualified as Text
 import Data.Time qualified as Time
 import Data.UUID (UUID)
 import GHC.Generics (Generic)
-import Lucid
 import Safe qualified as Safe
 import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
@@ -44,10 +41,7 @@ data Person = Person
     deriving stock (Generic, Ord, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
 
-instance ToHtml Person where
-    toHtml = toHtml . personName
-    toHtmlRaw = toHtml
-
+-- | A list of people who are part of the app
 people :: [Person]
 people = [wilma, ola]
 
@@ -57,12 +51,24 @@ ola = Person "Ola" "RoyalBlue"
 wilma :: Person
 wilma = Person "Wilma" "DarkRed"
 
-{- | Pay off debts
-| Takes a list of people with positive credit and a debt.
-| Returns a list of IOUs and a list of people with remaining credit.
+{- | Calculates the IOUs and the remaining debts after paying off
+the debts of a person.
+
+The algorithm compares the person's debt against the
+credit of another person:
+
+If the debt is greater than the credit, the
+debt is reduced by the credit and an IOU from the debtor to the creditor
+is created.
+
+If the debt is equal to the credit, the debt is paid off and an IOU is
+created. The the creditor is also removed from the list of creditors.
+
+If the debt is less than the credit, the debt is paid off and an IOU is
+created. The credit is reduced by the debt amount.
 -}
 payOff :: [Tally Owed] -> Tally Owing -> ([IOU], [Tally Owed])
-payOff credits debts = payOff' [] credits debts
+payOff = payOff' []
   where
     payOff' :: [IOU] -> [Tally Owed] -> Tally Owing -> ([IOU], [Tally Owed])
     payOff' ds (Tally p credit : ts) (Tally p' debt) =
@@ -72,25 +78,52 @@ payOff credits debts = payOff' [] credits debts
             LT -> payOff' (IOU p' p credit : ds) ts (Tally p' (debt - credit))
     payOff' _ [] _ = ([], [])
 
+{- |  Calculates a minimized list of debts between people, given a list of
+transactions.
+
+First, the transactions are split into two lists of tallies, one for
+people who owe money and one for people who are owed money.
+
+Then, debts (IOUs) are created by successively paying off the debts of the
+people who owe money to the people who are owed money.
+-}
 simplifiedDebts :: [Transaction] -> [(Person, [(Person, Amount)])]
-simplifiedDebts = debtsToList . minimizeTransactions . tallies
+simplifiedDebts = debtsToList . debts . tallies
   where
-    debtsToList :: IouMap -> [(Person, [(Person, Amount)])]
+    debtsToList :: DebtMap -> [(Person, [(Person, Amount)])]
     debtsToList = Map.toList . Map.map Map.toList . coerce
 
-minimizeTransactions :: ([Tally Owed], [Tally Owing]) -> IouMap
-minimizeTransactions =
-    IouMap . Map.unions @[] . coerce . List.unfoldr payOffStep
+    tallies :: [Transaction] -> ([Tally Owed], [Tally Owing])
+    tallies = splitTally . tally . iousToMap . concatMap iou
+
+    splitTally :: Map.Map Person Amount -> ([Tally Owed], [Tally Owing])
+    splitTally =
+        bimap (map (uncurry Tally)) (map (uncurry Tally . Arrow.second negate))
+            . List.partition ((>= 0) . snd)
+            . Map.toList
+
+-- | Calculates the debts from a tally of creditors and debtors
+debts :: ([Tally Owed], [Tally Owing]) -> DebtMap
+debts = Map.unions . List.unfoldr payOffStep
   where
     payOffStep ::
         ([Tally Owed], [Tally Owing]) ->
-        Maybe (IouMap, ([Tally Owed], [Tally Owing]))
+        Maybe (DebtMap, ([Tally Owed], [Tally Owing]))
     payOffStep (cs, d : ds) =
         let (ious', cs') = payOff cs d
          in Just (iousToMap ious', (cs', ds))
     payOffStep _ = Nothing
 
-type Amount = Float
+newtype Amount = Amount {unAmount :: Float}
+    deriving stock (Generic, Show)
+    deriving newtype (Num, Eq, Ord, Fractional, FromJSON, ToJSON)
+
+instance FromForm Amount where
+    fromForm form = do
+        a <- parseUnique "amount" form
+        if a < 0
+            then Left "Amount may not be negative"
+            else Right $ Amount a
 
 data Transaction
     = ExpenseTransaction !Expense
@@ -112,6 +145,9 @@ data Expense = Expense
 instance Eq Expense where
     (==) = (==) `on` expenseId
 
+{- | A settlement is a transaction where one person pays another person
+an amount of money to presumably settle a debt.
+-}
 data Settlement = Settlement
     { settlementFrom :: !Person
     , settlementTo :: !Person
@@ -135,11 +171,11 @@ data ExpenseForm = ExpenseForm
 
 instance FromForm ExpenseForm where
     fromForm form = do
-        debtor <- (parseUnique "debtor" form >>= findPerson)
-        paidBy <- (parseUnique "paidBy" form >>= findPerson)
-        total <- (parseUnique "total" form >>= mayNotBeNegative "Total")
-        rubric <- (parseUnique "rubric" form >>= mayNotBeEmpty)
-        amount <- (parseUnique "amount" form >>= mayNotBeNegative "Amount")
+        debtor <- parseUnique "debtor" form >>= findPerson
+        paidBy <- parseUnique "paidBy" form >>= findPerson
+        total <- parseUnique "total" form >>= mayNotBeNegative "total"
+        rubric <- parseUnique "rubric" form >>= mayNotBeEmpty
+        amount <- parseUnique "amount" form >>= mayNotBeNegative "amount"
         shareType <- fromForm form
         oPerson <- note "Couldn't find person" (otherPerson debtor)
         split' <- case shareType of
@@ -148,17 +184,25 @@ instance FromForm ExpenseForm where
                     then Left "Percentage may not be greater than 100"
                     else
                         mkSplit
-                            total
-                            [ Share Percentage debtor amount True
-                            , Share Percentage oPerson (100 - amount) False
+                            (Amount total)
+                            [ Share Percentage debtor (Amount amount) True
+                            , Share Percentage oPerson (Amount (100 - amount)) False
                             ]
             Fixed ->
                 mkSplit
-                    total
-                    [ Share Fixed debtor amount True
-                    , Share Fixed oPerson (total - amount) False
+                    (Amount total)
+                    [ Share Fixed debtor (Amount amount) True
+                    , Share Fixed oPerson (Amount (total - amount)) False
                     ]
-        pure $ ExpenseForm debtor paidBy split' shareType amount rubric total
+        pure $
+            ExpenseForm
+                debtor
+                paidBy
+                split'
+                shareType
+                amount
+                rubric
+                (Amount total)
       where
         findPerson :: Text -> Either Text Person
         findPerson n =
@@ -181,10 +225,12 @@ instance FromForm ExpenseForm where
         note :: Text -> Maybe a -> Either Text a
         note e = maybe (Left e) Right
 
+-- | An expense is dated, and has a unique identifier
 toExpense :: ExpenseForm -> UUID -> Time.LocalTime -> Expense
 toExpense (ExpenseForm{efSplit, efTotal, efPaidBy, efRubric}) =
     Expense efSplit efTotal efPaidBy efRubric
 
+-- | A person can be responsible for a percentage or fixed amount of an expense
 data ShareType
     = Percentage
     | Fixed
@@ -194,19 +240,11 @@ data ShareType
 data Share = Share
     { shareType :: !ShareType
     , sharePerson :: !Person
-    , shareAmount :: !Float
+    , shareAmount :: !Amount
     , shareEntered :: !Bool
     }
     deriving stock (Eq, Generic, Show)
     deriving anyclass (FromJSON, ToJSON)
-
-shareTypeToText :: ShareType -> Text
-shareTypeToText Percentage = "percentage"
-shareTypeToText Fixed = "fixed"
-
-shareTypeSymbol :: ShareType -> Text
-shareTypeSymbol Percentage = "%"
-shareTypeSymbol Fixed = "kr"
 
 instance FromForm ShareType where
     fromForm form =
@@ -230,7 +268,7 @@ data IOU = IOU
 
 iou :: Transaction -> [IOU]
 iou (ExpenseTransaction e) =
-    [ IOU (sharePerson s) (expensePaidBy e) (calcDebt (expenseTotal e) s)
+    [ IOU (sharePerson s) (expensePaidBy e) (debtAmount (expenseTotal e) s)
     | s <- splitShares (expenseSplit e)
     , sharePerson s /= expensePaidBy e
     ]
@@ -240,40 +278,38 @@ iou (SettlementTransaction s) =
 settlements :: Time.TimeZone -> Time.UTCTime -> [Transaction] -> [Settlement]
 settlements tz utc ts =
     [ Settlement p creditor amount (Time.utcToLocalTime tz utc)
-    | (p, debts) <- simplifiedDebts ts
-    , (creditor, amount) <- debts
+    | (p, d) <- simplifiedDebts ts
+    , (creditor, amount) <- d
     ]
 
 formatDate :: Time.LocalTime -> Text
 formatDate = Text.pack . Time.formatTime Time.defaultTimeLocale "%F - %R"
 
-calcDebt :: Amount -> Share -> Amount
-calcDebt total (Share Percentage _ p _) = (p * total) / 100
-calcDebt _ (Share Fixed _ a _) = a
+debtAmount :: Amount -> Share -> Amount
+debtAmount total (Share Percentage _ p _) = (p * total) / 100
+debtAmount _ (Share Fixed _ a _) = a
 
-iousToMap :: [IOU] -> IouMap
-iousToMap =
-    IouMap
-        . List.foldl'
-            ( \m i ->
-                Map.insertWith
-                    (Map.unionWith (+))
-                    (iouFrom i)
-                    (newDebt i)
-                    m
-            )
-            Map.empty
+iousToMap :: [IOU] -> DebtMap
+iousToMap = List.foldl' accumDebts Map.empty
   where
     newDebt :: IOU -> Map.Map Person Amount
     newDebt = Map.singleton <$> iouTo <*> iouAmount
 
-ious :: [Transaction] -> [IOU]
-ious = concatMap iou
+    accumDebts ::
+        Map.Map Person (Map.Map Person Amount) ->
+        IOU ->
+        Map.Map Person (Map.Map Person Amount)
+    accumDebts m i =
+        Map.insertWith
+            (Map.unionWith (+))
+            (iouFrom i)
+            (newDebt i)
+            m
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
     | any ((< 0) . shareAmount) shares = Left "Shares may not be negative"
-    | sum (map (calcDebt total) shares) /= total =
+    | sum (map (debtAmount total) shares) /= total =
         Left "Sum of shares does not equal total"
     | length (List.nub shares) /= length shares =
         Left "A person may not be listed more than once in the split"
@@ -281,24 +317,27 @@ mkSplit total shares
         Left "An expense must be split between at least two people"
     | otherwise = Right $ Split $ List.sortOn sharePerson shares
 
-tally :: IouMap -> Map.Map Person Amount
-tally = Map.foldlWithKey' mkPersonalTally Map.empty . coerce
+tally :: DebtMap -> Map.Map Person Amount
+tally = Map.foldlWithKey' mkPersonalTally Map.empty
   where
     mkPersonalTally ::
+        -- the map of debts/credits
         Map.Map Person Amount ->
+        -- the person whose debts/credits are being tallied (key)
         Person ->
+        -- the debts/credits of the person in regards to other people (value)
         Map.Map Person Amount ->
+        -- the updated map of debts/credits
         Map.Map Person Amount
-    mkPersonalTally m p debts =
-        let negative = Map.singleton p (negate $ sum $ Map.elems debts) -- subtract the amount of my debts from my tally
-         in Map.unionsWith (+) [debts, negative, m] -- add 'debts' to the union, to add credits to lenders
+    mkPersonalTally m p ds =
+        --  subtract the amount of my debts from my tally
+        let negative = Map.singleton p (negate $ sum $ Map.elems ds)
+         in -- add 'debts' to the union, to add credits to lenders
+            Map.unionsWith (+) [ds, negative, m]
 
-splitTally :: Map.Map Person Amount -> ([Tally Owed], [Tally Owing])
-splitTally =
-    bimap (map (uncurry Tally)) (map (uncurry Tally . Arrow.second negate))
-        . List.partition ((>= 0) . snd)
-        . Map.toList
-
+{- | A person's debt or credit (both are positive).
+The parameter is a phantom type to distinguish between debts and credits.
+-}
 data Tally a = Tally !Person !Amount
     deriving stock (Show, Eq)
 
@@ -306,18 +345,16 @@ data Owing
 
 data Owed
 
-newtype IouMap = IouMap
-    { unIouMap :: Map.Map Person (Map.Map Person Amount)
-    }
-    deriving stock (Show)
-    deriving newtype (Eq)
-
-tallies :: [Transaction] -> ([Tally Owed], [Tally Owing])
-tallies = splitTally . tally . iousToMap . ious
+-- | A map of people and their debts to other people
+type DebtMap = Map.Map Person (Map.Map Person Amount)
 
 peopleOfExpense :: Expense -> [Person]
 peopleOfExpense = map sharePerson . splitShares . expenseSplit
 
+{- | Find the person that was entered as the debtor in the expense.
+It is named 'singleDebtor' because an expense can only have one debtor as
+of now.
+-}
 singleDebtor :: Expense -> Maybe Share
 singleDebtor = List.find shareEntered . splitShares . expenseSplit
 
