@@ -1,10 +1,12 @@
 # Rinder
 
-## Installation
+## Testing
 
-`cabal install`
+`cabal run`
 
-## Usage
+## Installation/Usage
+
+`cabal install` 
 
 `rinder <port>`
 
