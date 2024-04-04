@@ -1,4 +1,4 @@
-module Willys.Response (
+module Store.Willys.Response (
     ProductResponse,
     PromotionResponse,
     Promotion (..),

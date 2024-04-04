@@ -14,10 +14,13 @@ import Servant.Server
 import Servant.Server.Generic (AsServer)
 import Server.Api
 import Server.Env (Env)
-import Server.Handler
-import Server.Html
+import Server.Shopping.Api
+import Server.Shopping.Handler
+import Server.Shopping.Html
+import Server.Split.Api
+import Server.Split.Handler
+import Server.Utils.Handler
 
--- | The WAI application
 app :: Env -> Application
 app env =
     serveWithContext

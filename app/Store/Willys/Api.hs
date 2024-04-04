@@ -1,4 +1,4 @@
-module Willys.Api (WillysRootApi, getPromotionsEP, searchProductsEP) where
+module Store.Willys.Api (WillysRootApi, getPromotionsEP, searchProductsEP) where
 
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -11,7 +11,7 @@ import Servant (
     (:>),
     type (:>),
  )
-import Willys.Response (ProductResponse, PromotionResponse)
+import Store.Willys.Response
 
 {- FOURMOLU_DISABLE -}
 data WillysRootApi as = WillysRootAPI

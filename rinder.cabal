@@ -62,14 +62,29 @@ executable rinder
 
     -- Modules included in this executable, other than Main.
     other-modules: Split
-                 , Willys.Api
-                 , Willys.Client
-                 , Willys.Response
-                 , Server.Html
-                 , Server.Handler
+                 , Server.Shopping.Html
+                 , Server.Shopping.Api
+                 , Server.Shopping.Handler 
+
+                 , Server.Split.Html
+                 , Server.Split.Api
+                 , Server.Split.Handler 
+
+                 , Server.Utils.Html
+                 , Server.Utils.Handler
+
                  , Server.Api
                  , Server.App
                  , Server.Env
+
+                 , Store.Willys.Api
+                 , Store.Willys.Client
+                 , Store.Willys.Response
+
+                 , Store.Ica.Api
+                 , Store.Ica.Client
+                 , Store.Ica.Response
+
                  , Inter.Language
                  , Inter.Lexicon
 

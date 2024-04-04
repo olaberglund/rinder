@@ -1,4 +1,4 @@
-module Willys.Client (
+module Store.Willys.Client (
     runClientDefault,
     fetchPromotions,
     fetchProducts,
@@ -14,8 +14,8 @@ import Servant (
 import Servant.Client ((//), (/:))
 import Servant.Client qualified as Client
 import Servant.Client.Core qualified as Core
-import Willys.Api (WillysRootApi (..))
-import Willys.Response (Product, Promotion, responseResults)
+import Store.Willys.Api (WillysRootApi (..))
+import Store.Willys.Response (Product, Promotion, responseResults)
 
 runClientDefault :: Client.ClientM a -> IO (Either Client.ClientError a)
 runClientDefault action = do
