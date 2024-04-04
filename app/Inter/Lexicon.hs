@@ -51,6 +51,9 @@ data Phrase
     | SomethingWentWrong
     | Show
     | Debts
+    | NoSuchExpense
+    | ExpenseSaved
+    | MaxTwoPeople
     deriving stock (Show)
 
 l_ :: (Monad m) => Language -> Phrase -> HtmlT m ()
@@ -233,3 +236,15 @@ translate = \case
         SE -> "Skulder"
         EN -> "Debts"
         Simlish -> "Doobly"
+    NoSuchExpense -> \case
+        SE -> "Ingen sådan utgift hittades"
+        EN -> "No such expense found"
+        Simlish -> "Noozle shnabble booble"
+    ExpenseSaved -> \case
+        SE -> "Utgift sparad"
+        EN -> "Expense saved"
+        Simlish -> "Booble smeega"
+    MaxTwoPeople -> \case
+        SE -> "Just nu stöds inte redigering av utgifter med fler än två personer."
+        EN -> "Currently, editing expenses with more than two people is not supported."
+        Simlish -> "Jibbly nooble dooble zibbly zorp"

@@ -248,8 +248,9 @@ instance ToHtml ShoppingItem where
     toHtml item = shoppingItem_ item
     toHtmlRaw = toHtml
 
-data ShoppingItems = ShoppingItems [ShoppingItem]
-    deriving stock (Generic, Show, Eq)
+newtype ShoppingItems = ShoppingItems {unShoppingItems :: [ShoppingItem]}
+    deriving stock (Generic, Show)
+    deriving newtype (Eq)
 
 instance ToHtml ShoppingItems where
     toHtmlRaw = toHtml
@@ -696,5 +697,3 @@ pieChart_ e size =
 -- | helper function to convert a Showable to a Text
 text :: (Show a) => a -> Text
 text = Text.pack . show
-
--- lang = Lexicon.EN

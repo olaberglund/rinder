@@ -31,6 +31,7 @@ import Data.Binary.Builder qualified as Builder
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either qualified as Either
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe qualified as Maybe
 import Data.Text (Text)
 import Data.Time qualified as Time
@@ -109,8 +110,17 @@ saveExpenseH env lang uuid form = do
                             lang
                             e
                             debtor
-                            (Just (FeedbackMessage Success "Utgift sparad"))
-                _ -> throwError $ err404' lang (Just "Ingen sådan utgift hittades")
+                            ( Just
+                                ( FeedbackMessage
+                                    Success
+                                    (l lang Lexicon.ExpenseSaved)
+                                )
+                            )
+                _ ->
+                    throwError $
+                        err404'
+                            lang
+                            (Just (l lang Lexicon.NoSuchExpense))
         Left err -> liftIO (print err) >> throwError err500
   where
     replaceExpense :: Transaction -> Transaction
@@ -131,15 +141,16 @@ editExpensePageH env lang uuid = do
             case expense of
                 Just e -> case singleDebtor e of
                     Just share -> return $ EditExpensePage lang e share Nothing
-                    Nothing -> throwError $ err404' lang (Just moreThanTwoError)
+                    Nothing ->
+                        throwError $
+                            err404'
+                                lang
+                                (Just (l lang Lexicon.MaxTwoPeople))
                 Nothing ->
                     throwError $
-                        err404' lang (Just "Ingen sådan utgift hittades")
+                        err404' lang (Just (l lang Lexicon.NoSuchExpense))
         Left err -> liftIO (print err) >> throwError err500
   where
-    moreThanTwoError =
-        "Just nu stöds inte \
-        \redigering av utgifter med fler deltagare än två"
 
 settleUpH :: Env -> Language -> Handler Transactions
 settleUpH env lang = do
@@ -204,10 +215,7 @@ toggle Checked = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Env -> Handler ShoppingItems
-removeAllH env =
-    liftIO $
-        LBS.writeFile (envShoppingListFile env) "[]"
-            >> return (ShoppingItems [])
+removeAllH env = liftIO $ updateAndBroadCast env []
 
 removeCheckedH :: Env -> Handler ShoppingItems
 removeCheckedH env = liftIO $ do
@@ -231,17 +239,26 @@ toggleProductH env product' = liftIO $ do
         | siProduct i == product' = i{siCheck = toggle (siCheck i)}
         | otherwise = i
 
-asServerEvent :: (ToHtml a) => [a] -> ServerEvent
+{- | Convert a non-empty list of elements with a 'ToHtml' instance to a
+'ServerEvent' that can be sent to a client.
+
+The list may not be empty, since it is not possible to return a 'raw' empty
+list. To send an empty list, wrap it in an appropriate newtype.
+-}
+asServerEvent :: (ToHtml a) => NonEmpty.NonEmpty a -> ServerEvent
 asServerEvent =
     ServerEvent Nothing Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
+        . NonEmpty.toList
 
 shoppingPageH :: Env -> Language -> Handler ShoppingPage
 shoppingPageH env lang = liftIO $ do
     fetchedPromotions <- runClientDefault fetchPromotions
     shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
     case shoppingItems of
-        Left err -> putStrLn err >> return (ShoppingPage lang mempty mempty mempty)
+        Left err ->
+            putStrLn err
+                >> return (ShoppingPage lang mempty mempty mempty)
         Right list ->
             return
                 ( ShoppingPage
@@ -269,7 +286,9 @@ redirect url = throwError err303{errHeaders = [(hLocation, url)]}
 updateAndBroadCast :: Env -> [ShoppingItem] -> IO ShoppingItems
 updateAndBroadCast env items =
     LBS.writeFile (envShoppingListFile env) (encode items)
-        >> writeChan (envBroadcastChan env) (asServerEvent items)
+        >> writeChan
+            (envBroadcastChan env)
+            (asServerEvent (NonEmpty.singleton (ShoppingItems items)))
         >> return (ShoppingItems items)
 
 productListH ::
