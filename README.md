@@ -24,8 +24,6 @@
 
 ![Screenshot 2024-04-04 at 13-09-35 Hörlund](https://github.com/olaberglund/rinder/assets/64544704/8e2351ec-0aa1-4d85-8f43-4214eb67fb73)
 
-## Internationalization
-
-Swedish/English/Simlish:
+- Internationalization (Swedish/English/Simlish)
 
 ![Screenshot 2024-04-04 at 13-11-33 Hörlund](https://github.com/olaberglund/rinder/assets/64544704/74c4f785-ee8d-43ab-9309-0446a8916f5e)
