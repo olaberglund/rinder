@@ -203,7 +203,7 @@ instance ToHtml ShoppingPage where
         div_ [id_ "product-search-container", class_ "tabcontent"] $ do
             h2_ (l_ lang Lexicon.SearchAndAddProduct)
             form_ [class_ "gapped-form"] $
-                productSearch_ lang mempty (mkApiHref "/inkop/produkter") products
+                productSearch_ lang mempty (mkHref lang "/inkop/produkter") products
         div_ [id_ "promotions-container", class_ "tabcontent"] $ do
             h2_ (l_ lang Lexicon.WeeksOffers)
             toHtml $
@@ -218,7 +218,7 @@ instance ToHtml ShoppingPage where
                 button_
                     [ class_ "remove-all-button"
                     , type_ "button"
-                    , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort-alla"
+                    , HX.hxDelete_ $ mkHref lang "/inkop/ta-bort-alla"
                     , HX.hxTarget_ "#shopping-list"
                     , HX.hxSwap_ "outerHTML"
                     ]
