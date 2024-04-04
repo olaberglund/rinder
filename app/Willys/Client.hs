@@ -4,6 +4,7 @@ module Willys.Client (
     fetchProducts,
 ) where
 
+import Data.Maybe qualified as Maybe
 import Data.Text (Text)
 import Network.HTTP.Client.TLS qualified as TLS
 import Servant (
@@ -39,7 +40,8 @@ apiClient = Client.client (Proxy @(NamedRoutes WillysRootApi))
 
 fetchPromotions :: Client.ClientM [Promotion]
 fetchPromotions =
-    responseResults
+    Maybe.fromMaybe []
+        . responseResults
         <$> ( apiClient
                 // getPromotionsEP
                 /: Just 2176
@@ -49,5 +51,6 @@ fetchPromotions =
 
 fetchProducts :: Text -> Client.ClientM [Product]
 fetchProducts q =
-    responseResults
+    Maybe.fromMaybe []
+        . responseResults
         <$> (apiClient // searchProductsEP /: Just q /: Just 80)

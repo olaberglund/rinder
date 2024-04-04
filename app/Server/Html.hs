@@ -152,7 +152,7 @@ instance ToHtml ProductSearchList where
                     $ do
                         img_
                             [ class_ "product"
-                            , src_ (unImageUrl (productImage p))
+                            , src_ (Maybe.fromMaybe "" $ unImageUrl (productImage p))
                             ]
                         div_ [class_ "product-details"] $ do
                             span_ [class_ "product-name"] $
@@ -265,7 +265,7 @@ instance ToHtml ShoppingItems where
 
 shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
 shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
-    img_ [class_ "item-image", src_ (unImageUrl (productImage (siProduct item)))]
+    img_ [class_ "item-image", src_ (Maybe.fromMaybe "" $ unImageUrl (productImage (siProduct item)))]
     div_ [class_ "item-details"] $ do
         div_ [class_ "item-details-text"] $ do
             span_ [class_ "product-name"] $ toHtml (productName (siProduct item))

@@ -18,6 +18,7 @@ import Data.Aeson qualified as Aeson
 import Data.Char qualified as Char
 import Data.Function (on)
 import Data.Maybe (fromMaybe)
+import Data.Maybe qualified as Maybe
 import Data.Ord qualified as Ord
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -28,7 +29,7 @@ import Lucid (ToHtml (..))
 import Safe qualified
 
 data Response a = Response
-    { responseResults :: ![a]
+    { responseResults :: !(Maybe [a])
     , responsePagination :: !Pagination
     }
     deriving stock (Generic, Show)
@@ -70,7 +71,7 @@ newtype Promotion = Promotion {unPromotion :: Product}
 instance Aeson.FromJSON Promotion where
     parseJSON = Aeson.withObject "Promotion" $ \v -> do
         productName :: Text <- v .: "name"
-        imageUrl :: Text <- v .: "image" >>= (.: "url")
+        imageUrl :: Maybe Text <- v .: "image" >>= (.: "url")
         price :: Maybe Text <- v .: "price"
         potentialPromotions :: [PotentialPromotion] <- v .: "potentialPromotions"
         return $
@@ -113,7 +114,7 @@ data PotentialPromotion = PotentialPromotion
                 PotentialPromotion
 
 newtype ImageUrl = ImageUrl
-    { unImageUrl :: Text
+    { unImageUrl :: Maybe Text
     }
     deriving stock (Generic, Show)
     deriving newtype (Eq, Ord)
@@ -122,7 +123,7 @@ newtype ImageUrl = ImageUrl
 getId :: Product -> Text
 getId p =
     Text.filter (/= ' ') (productName p)
-        <> Text.filter Char.isNumber (unImageUrl (productImage p))
+        <> Text.filter Char.isNumber (Maybe.fromMaybe "" $ unImageUrl (productImage p))
 
 getCartLabel :: Product -> Maybe Text
 getCartLabel p = Safe.headMay (productPotentialPromotions p) >>= ppCartLabel
