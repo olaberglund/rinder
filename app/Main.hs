@@ -19,6 +19,6 @@ main =
                     >>= run port . app
         _ ->
             newEnv
-                "dev-shopping-list.json"
                 "dev-transactions.json"
+                "dev-shopping-list.json"
                 >>= run 8080 . app

@@ -80,6 +80,7 @@ executable rinder
                  , Store.Willys.Api
                  , Store.Willys.Client
                  , Store.Willys.Response
+                 , Store.Grocery
 
                  , Store.Ica.Api
                  , Store.Ica.Client

@@ -54,6 +54,7 @@ data Phrase
     | NoSuchExpense
     | ExpenseSaved
     | MaxTwoPeople
+    | NoItems
     deriving stock (Show)
 
 l_ :: (Monad m) => Language -> Phrase -> HtmlT m ()
@@ -248,3 +249,7 @@ translate = \case
         SE -> "Just nu stöds inte redigering av utgifter med fler än två personer."
         EN -> "Currently, editing expenses with more than two people is not supported."
         Simlish -> "Jibbly nooble dooble zibbly zorp"
+    NoItems -> \case
+        SE -> "Inga varor att visa"
+        EN -> "No items to show"
+        Simlish -> "Noozle nubble booble"

@@ -38,7 +38,6 @@ import Server.Shopping.Html (
     ProductSearchList (..),
     Search (unSearch),
     ShoppingItem (..),
-    ShoppingItems (ShoppingItems),
     ShoppingPage (..),
  )
 import Store.Willys.Client
@@ -64,17 +63,17 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllH :: Env -> Handler ShoppingItems
+removeAllH :: Env -> Handler [ShoppingItem]
 removeAllH env = liftIO $ updateAndBroadCast env []
 
-removeCheckedH :: Env -> Handler ShoppingItems
+removeCheckedH :: Env -> Handler [ShoppingItem]
 removeCheckedH env = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newItems = filter ((== Unchecked) . siCheck) ps
              in updateAndBroadCast env newItems
-        Left err -> print err >> return (ShoppingItems [])
+        Left err -> print err >> return []
 
 toggleProductH :: Env -> Product -> Handler NoContent
 toggleProductH env product' = liftIO $ do
@@ -95,11 +94,10 @@ toggleProductH env product' = liftIO $ do
 The list may not be empty, since it is not possible to return a 'raw' empty
 list. To send an empty list, wrap it in an appropriate newtype.
 -}
-asServerEvent :: (ToHtml a) => NonEmpty.NonEmpty a -> ServerEvent
+asServerEvent :: (ToHtml a) => [a] -> ServerEvent
 asServerEvent =
     ServerEvent Nothing Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
-        . NonEmpty.toList
 
 shoppingPageH :: Env -> Language -> Handler ShoppingPage
 shoppingPageH env lang = liftIO $ do
@@ -108,7 +106,7 @@ shoppingPageH env lang = liftIO $ do
     case shoppingItems of
         Left err ->
             putStrLn err
-                >> return (ShoppingPage lang mempty mempty mempty)
+                >> return (ShoppingPage lang mempty mempty (Nothing))
         Right list ->
             return
                 ( ShoppingPage
@@ -118,22 +116,22 @@ shoppingPageH env lang = liftIO $ do
                     (Just list)
                 )
 
-addProductH :: Env -> Product -> Handler ShoppingItems
+addProductH :: Env -> Product -> Handler [ShoppingItem]
 addProductH env product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newList = ShoppingItem product' Unchecked : ps
              in updateAndBroadCast env newList
-        Left err -> print err >> return (ShoppingItems [])
+        Left err -> print err >> return []
 
-updateAndBroadCast :: Env -> [ShoppingItem] -> IO ShoppingItems
+updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
 updateAndBroadCast env items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
             (envBroadcastChan env)
-            (asServerEvent (NonEmpty.singleton (ShoppingItems items)))
-        >> return (ShoppingItems items)
+            (asServerEvent items)
+        >> return items
 
 productListH ::
     Language ->
@@ -147,6 +145,7 @@ productListH lang attributes search = liftIO $ do
             print err
                 >> return
                     ( ProductSearchList
+                        lang
                         mempty
                         mempty
                         (l lang Lexicon.SearchResults)
@@ -155,6 +154,7 @@ productListH lang attributes search = liftIO $ do
         Right products ->
             return $
                 ProductSearchList
+                    lang
                     attributes
                     products
                     (l lang Lexicon.SearchResults)

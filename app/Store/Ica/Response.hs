@@ -1,9 +1,11 @@
+-- | Encoding the API documented here: https://github.com/svendahlstrand/ica-api/blob/master/api-referens.md
 module Store.Ica.Response () where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
 import Deriving.Aeson qualified
+import GHC.Base (Symbol)
 import GHC.Generics (Generic)
 
 data Offer = Offer
@@ -20,10 +22,10 @@ data Offer = Offer
         (FromJSON, ToJSON)
         via CustomJSON
                 '[ FieldLabelModifier
-                    '[ StripPrefix "offer"
-                     , Rename "Id" "OfferId"
-                     , Rename "Type" "OfferType"
-                     , Rename "Condition" "OfferCondition"
+                    '[ Rename "offerId" "OfferId"
+                     , Rename "offerType" "OfferType"
+                     , Rename "offerCondition" "OfferCondition"
+                     , StripPrefix "offer"
                      ]
                  ]
                 Offer
@@ -42,3 +44,39 @@ data Article = Article
                      ]
                  ]
                 Article
+
+data Response a (b :: Symbol) = Response
+    { unResponse :: a
+    }
+    deriving stock (Show, Generic, Eq)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[ FieldLabelModifier
+                    '[ Rename "unResponse" b
+                     ]
+                 ]
+                (Response a b)
+
+type ResponseJSON a b =
+    CustomJSON '[FieldLabelModifier '[Rename "unResponse" a]] b
+
+type ItemResponse = Response [Item] "Items"
+
+type OfferResponse = Response [Offer] "Offers"
+
+data Item = Item
+    { itemDescription :: Text -- ItemDescription
+    , itemArticleGroup :: Int -- ArticleGroup
+    , itemArticleGroupExtended :: Int -- ArticleGroupExtended
+    }
+    deriving stock (Show, Generic, Eq)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[ FieldLabelModifier
+                    '[ Rename "itemDescription" "ItemDescription"
+                     , StripPrefix "item"
+                     ]
+                 ]
+                Item

@@ -1,5 +1,4 @@
 module Server.Shopping.Html (
-    ShoppingItems (ShoppingItems),
     ShoppingItem (..),
     Checkbox (..),
     ShoppingPage (..),
@@ -28,6 +27,7 @@ import Inter.Lexicon (l, l_)
 import Inter.Lexicon qualified as Lexicon
 import Lucid
 import Lucid.Base qualified
+import Lucid.Htmx (hxSwap_)
 import Lucid.Htmx qualified as HX
 import Server.Utils.Html (baseTemplate)
 import Store.Willys.Response
@@ -45,6 +45,7 @@ newtype Products = Products {products :: [Product]}
 
 data ProductSearchList
     = ProductSearchList
+        !Language
         !(Product -> [Attribute])
         ![Product]
         !Text
@@ -53,31 +54,32 @@ data ProductSearchList
 
 instance ToHtml ProductSearchList where
     toHtmlRaw = toHtml
-    toHtml (ProductSearchList attributes products rubric listId) =
+    toHtml (ProductSearchList lang attributes products rubric listId) =
         fieldset_ [class_ "products", id_ listId] $ do
             legend_ (toHtml rubric)
             mapM_
                 ( \p -> div_
-                    ( [ class_ "product-container"
-                      , title_ (productName p)
-                      ]
-                        <> (attributes p)
-                    )
+                    [class_ "product-container", title_ (productName p)]
                     $ do
-                        img_
-                            [ class_ "product"
-                            , src_ (Maybe.fromMaybe "" $ unImageUrl (productImage p))
-                            ]
+                        div_ [class_ "product-image-container"] $
+                            img_
+                                [ class_ "product-image"
+                                , src_ (Maybe.fromMaybe "" $ unImageUrl (productImage p))
+                                ]
                         div_ [class_ "product-details"] $ do
-                            span_ [class_ "product-name"] $
-                                toHtml (productName p)
-                            span_ [class_ "product-promo"] $
-                                toHtml $
-                                    getPrice p
-                            span_ [class_ "product-save"] $
-                                toHtml $
-                                    Maybe.fromMaybe "" $
-                                        getSavePrice p
+                            div_ [class_ "product-details-text"] $ do
+                                span_ [class_ "product-name"] $
+                                    toHtml (productName p)
+                                span_ [class_ "product-promo"] $
+                                    toHtml $
+                                        getPrice p
+                                span_ [class_ "product-save"] $
+                                    toHtml $
+                                        Maybe.fromMaybe "" $
+                                            getSavePrice p
+                            button_
+                                (class_ "add-to-shopping-list-button" : attributes p)
+                                (l_ lang Lexicon.Add)
                 )
                 products
 
@@ -85,7 +87,6 @@ addToShoppingList :: Language -> Product -> [Attribute]
 addToShoppingList lang p =
     [ HX.hxPost_ (mkHref lang "/inkop/lagg-till")
     , HX.hxTarget_ "#shopping-list"
-    , HX.hxSwap_ "outerHTML"
     , HX.hxExt_ "json-enc"
     , HX.hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)
     ]
@@ -122,6 +123,7 @@ instance ToHtml ShoppingPage where
             h2_ (l_ lang Lexicon.WeeksOffers)
             toHtml $
                 ProductSearchList
+                    lang
                     (addToShoppingList lang)
                     (coerce promotions)
                     (l lang Lexicon.Offers)
@@ -134,7 +136,6 @@ instance ToHtml ShoppingPage where
                     , type_ "button"
                     , HX.hxDelete_ $ mkHref lang "/inkop/ta-bort-alla"
                     , HX.hxTarget_ "#shopping-list"
-                    , HX.hxSwap_ "outerHTML"
                     ]
                     (l_ lang Lexicon.RemoveAll)
                 button_
@@ -142,12 +143,18 @@ instance ToHtml ShoppingPage where
                     , type_ "button"
                     , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort"
                     , HX.hxTarget_ "#shopping-list"
-                    , HX.hxSwap_ "outerHTML"
                     ]
                     (l_ lang Lexicon.RemoveMarked)
             case shoppingList of
                 Nothing -> p_ (l_ lang Lexicon.SomethingWentWrong)
-                Just list -> toHtml (ShoppingItems list)
+                Just list -> do
+                    div_
+                        [ id_ "shopping-list"
+                        , HX.hxExt_ "sse"
+                        , hxSseConnect_ (mkApiHref "/inkop/sse")
+                        , hxSseSwap_ "message"
+                        ]
+                        $ toHtml list
     toHtmlRaw = toHtml
 
 data Checkbox = Checked | Unchecked
@@ -162,20 +169,9 @@ instance ToHtml ShoppingItem where
     toHtml item = shoppingItem_ item
     toHtmlRaw = toHtml
 
-newtype ShoppingItems = ShoppingItems {unShoppingItems :: [ShoppingItem]}
-    deriving stock (Generic, Show)
-    deriving newtype (Eq)
-
-instance ToHtml ShoppingItems where
+instance ToHtml [ShoppingItem] where
     toHtmlRaw = toHtml
-    toHtml (ShoppingItems items) = div_
-        [ id_ "shopping-list"
-        , HX.hxExt_ "sse"
-        , hxSseConnect_ (mkApiHref "/inkop/sse")
-        , hxSseSwap_ "message"
-        ]
-        $ do
-            mapM_ shoppingItem_ items
+    toHtml items = mapM_ shoppingItem_ items
 
 shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
 shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
@@ -233,7 +229,7 @@ productSearch_ lang attributes posturl products = do
             , HX.hxParams_ "query"
             ]
             (l_ lang Lexicon.Show)
-    toHtml (ProductSearchList attributes products (l lang Lexicon.SearchResults) listId)
+    toHtml (ProductSearchList lang attributes products (l lang Lexicon.SearchResults) listId)
   where
     listId = "searched-products"
 

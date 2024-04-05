@@ -17,6 +17,12 @@ import Servant.Client.Core qualified as Core
 import Store.Willys.Api (WillysRootApi (..))
 import Store.Willys.Response (Product, Promotion, responseResults)
 
+searchProduct :: Text -> IO (Either Core.ClientError [Product])
+searchProduct = runClientDefault . fetchProducts
+
+getOffers :: IO (Either Core.ClientError [Promotion])
+getOffers = runClientDefault fetchPromotions
+
 runClientDefault :: Client.ClientM a -> IO (Either Client.ClientError a)
 runClientDefault action = do
     mgr <- TLS.newTlsManager
