@@ -19,15 +19,14 @@ import Servant.HTML.Lucid (HTML)
 import Server.Shopping.Html (
     ProductSearchList,
     Search,
-    ShoppingItem,
     ShoppingPage,
  )
 import Store.Willys.Response (Product (..))
 
 data ShoppingApi as = ShoppingApi
     { shoppingPageEP :: !(as :- Get '[HTML] ShoppingPage)
-    , removeCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] [ShoppingItem])
-    , removeAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] [ShoppingItem])
+    , removeCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] NoContent)
+    , removeAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] NoContent)
     , sseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
     -- ^ Server-sent events endpoint for the shopping list. A client connects
     --     and receives an event each time a user modifies the shopping list.
@@ -42,7 +41,7 @@ data ShoppingApi as = ShoppingApi
         !( as
             :- "lagg-till"
                 :> ReqBody '[JSON] Product
-                :> Post '[HTML] [ShoppingItem]
+                :> Post '[HTML] NoContent
          )
     -- ^ Add a product to the shopping list
     , toggleProductEP ::

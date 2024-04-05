@@ -1,5 +1,6 @@
 module Server.Shopping.Html (
     ShoppingItem (..),
+    ShoppingItems (..),
     Checkbox (..),
     ShoppingPage (..),
     ProductSearchList (..),
@@ -27,7 +28,6 @@ import Inter.Lexicon (l, l_)
 import Inter.Lexicon qualified as Lexicon
 import Lucid
 import Lucid.Base qualified
-import Lucid.Htmx (hxSwap_)
 import Lucid.Htmx qualified as HX
 import Server.Utils.Html (baseTemplate)
 import Store.Willys.Response
@@ -86,9 +86,9 @@ instance ToHtml ProductSearchList where
 addToShoppingList :: Language -> Product -> [Attribute]
 addToShoppingList lang p =
     [ HX.hxPost_ (mkHref lang "/inkop/lagg-till")
-    , HX.hxTarget_ "#shopping-list"
     , HX.hxExt_ "json-enc"
     , HX.hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)
+    , HX.hxSwap_ "none"
     ]
 
 data ShoppingPage
@@ -135,14 +135,14 @@ instance ToHtml ShoppingPage where
                     [ class_ "remove-all-button"
                     , type_ "button"
                     , HX.hxDelete_ $ mkHref lang "/inkop/ta-bort-alla"
-                    , HX.hxTarget_ "#shopping-list"
+                    , HX.hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveAll)
                 button_
                     [ class_ "remove-checked-button"
                     , type_ "button"
                     , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort"
-                    , HX.hxTarget_ "#shopping-list"
+                    , HX.hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveMarked)
             case shoppingList of
@@ -154,7 +154,7 @@ instance ToHtml ShoppingPage where
                         , hxSseConnect_ (mkApiHref "/inkop/sse")
                         , hxSseSwap_ "message"
                         ]
-                        $ toHtml list
+                        $ toHtml (ShoppingItems lang list)
     toHtmlRaw = toHtml
 
 data Checkbox = Checked | Unchecked
@@ -172,6 +172,15 @@ instance ToHtml ShoppingItem where
 instance ToHtml [ShoppingItem] where
     toHtmlRaw = toHtml
     toHtml items = mapM_ shoppingItem_ items
+
+data ShoppingItems = ShoppingItems !Language ![ShoppingItem]
+    deriving stock (Generic, Show, Eq)
+
+instance ToHtml ShoppingItems where
+    toHtmlRaw = toHtml
+    toHtml (ShoppingItems lang items)
+        | null items = p_ [id_ "shopping-list-items"] (l_ lang Lexicon.NoItems)
+        | otherwise = div_ [id_ "shopping-list-items", class_ "bordered"] $ toHtml items
 
 shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
 shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do

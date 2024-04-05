@@ -40,10 +40,10 @@ server env =
                     ShoppingApi
                         { shoppingPageEP = shoppingPageH env lang
                         , productListEP = productListH lang (addToShoppingList lang)
-                        , addProductEP = addProductH env
-                        , toggleProductEP = toggleProductH env
-                        , removeCheckedEP = removeCheckedH env
-                        , removeAllEP = removeAllH env
+                        , addProductEP = addProductH env lang
+                        , toggleProductEP = toggleProductH env lang
+                        , removeCheckedEP = removeCheckedH env lang
+                        , removeAllEP = removeAllH env lang
                         , sseEP = sseH env
                         }
                 , splitEP =

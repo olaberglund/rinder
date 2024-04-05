@@ -20,7 +20,6 @@ import Data.Binary.Builder qualified as Builder
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either qualified as Either
-import Data.List.NonEmpty qualified as NonEmpty
 import Inter.Language (Language)
 import Inter.Lexicon (l)
 import Inter.Lexicon qualified as Lexicon
@@ -38,6 +37,7 @@ import Server.Shopping.Html (
     ProductSearchList (..),
     Search (unSearch),
     ShoppingItem (..),
+    ShoppingItems (..),
     ShoppingPage (..),
  )
 import Store.Willys.Client
@@ -63,23 +63,23 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllH :: Env -> Handler [ShoppingItem]
-removeAllH env = liftIO $ updateAndBroadCast env []
+removeAllH :: Env -> Language -> Handler NoContent
+removeAllH env lang = liftIO $ updateAndBroadCast env lang []
 
-removeCheckedH :: Env -> Handler [ShoppingItem]
-removeCheckedH env = liftIO $ do
+removeCheckedH :: Env -> Language -> Handler NoContent
+removeCheckedH env lang = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newItems = filter ((== Unchecked) . siCheck) ps
-             in updateAndBroadCast env newItems
-        Left err -> print err >> return []
+             in updateAndBroadCast env lang newItems
+        Left err -> print err >> return NoContent
 
-toggleProductH :: Env -> Product -> Handler NoContent
-toggleProductH env product' = liftIO $ do
+toggleProductH :: Env -> Language -> Product -> Handler NoContent
+toggleProductH env lang product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
-        Right ps -> void $ updateAndBroadCast env (map toggleItem ps)
+        Right ps -> void $ updateAndBroadCast env lang (map toggleItem ps)
         Left err -> print err
     return NoContent
   where
@@ -116,22 +116,22 @@ shoppingPageH env lang = liftIO $ do
                     (Just list)
                 )
 
-addProductH :: Env -> Product -> Handler [ShoppingItem]
-addProductH env product' = liftIO $ do
+addProductH :: Env -> Language -> Product -> Handler NoContent
+addProductH env lang product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newList = ShoppingItem product' Unchecked : ps
-             in updateAndBroadCast env newList
-        Left err -> print err >> return []
+             in updateAndBroadCast env lang newList
+        Left err -> print err >> return NoContent
 
-updateAndBroadCast :: Env -> [ShoppingItem] -> IO [ShoppingItem]
-updateAndBroadCast env items =
+updateAndBroadCast :: Env -> Language -> [ShoppingItem] -> IO NoContent
+updateAndBroadCast env lang items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
             (envBroadcastChan env)
-            (asServerEvent items)
-        >> return items
+            (asServerEvent [ShoppingItems lang items])
+        >> return NoContent
 
 productListH ::
     Language ->
