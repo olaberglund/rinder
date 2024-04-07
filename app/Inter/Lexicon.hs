@@ -218,9 +218,9 @@ translate = \case
         EN -> "Payment to"
         Simlish -> "Swabble oop"
     WeeksShoppingList -> \case
-        SE -> "Veckans inköpslista"
-        EN -> "This week's shopping list"
-        Simlish -> "Woozle shnibble shnabble"
+        SE -> "Veckans inköpslista på"
+        EN -> "This week's shopping list at"
+        Simlish -> "Woozle shnibble shnabble ap"
     YourShoppingList -> \case
         SE -> "Din inköpslista"
         EN -> "Your shopping list"

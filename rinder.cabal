@@ -131,7 +131,8 @@ executable rinder
                       time,
                       uuid,
                       safe,
-                      deriving-aeson
+                      deriving-aeson,
+                      newtype-generics
 
     ghc-options: -threaded 
 

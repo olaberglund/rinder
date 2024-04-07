@@ -11,7 +11,10 @@ module Server.Shopping.Handler (
 import Control.Concurrent (Chan, dupChan, readChan, writeChan)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Control.Newtype.Generics (Newtype, over)
 import Data.Aeson (
+    FromJSON (..),
+    ToJSON,
     eitherDecode,
     eitherDecodeStrict,
     encode,
@@ -20,6 +23,11 @@ import Data.Binary.Builder qualified as Builder
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either qualified as Either
+import Data.Map qualified as Map
+import Data.Maybe qualified as Maybe
+import Data.Text (Text)
+import Data.Text.Encoding (encodeUtf8)
+import GHC.Generics (Generic)
 import Inter.Language (Language)
 import Inter.Lexicon (l)
 import Inter.Lexicon qualified as Lexicon
@@ -63,22 +71,54 @@ toggle Checked = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Env -> Language -> Grocery -> Handler NoContent
-removeAllH env lang grocery = liftIO $ updateAndBroadCast env lang grocery []
+removeAllH env lang grocery = liftIO $ do
+    res <- BS.readFile (envShoppingListFile env)
+    case eitherDecodeStrict res of
+        Right (sl :: ShoppingList) ->
+            updateAndBroadCast
+                env
+                lang
+                grocery
+                (over ShoppingList (Map.adjust (const []) (groceryName grocery)) sl)
+        Left err -> print err >> return NoContent
 
 removeCheckedH :: Env -> Language -> Grocery -> Handler NoContent
 removeCheckedH env lang grocery = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
-        Right ps ->
-            let newItems = filter ((== Unchecked) . siCheck) ps
-             in updateAndBroadCast env lang grocery newItems
+        Right sl ->
+            case Map.lookup (groceryName grocery) (unShoppingList sl) of
+                Just items ->
+                    let newItems = filter ((== Unchecked) . siCheck) items
+                     in updateAndBroadCast env lang grocery $
+                            over
+                                ShoppingList
+                                (Map.insert (groceryName grocery) newItems)
+                                sl
+                Nothing -> return NoContent
         Left err -> print err >> return NoContent
 
 toggleProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
 toggleProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
-        Right ps -> void $ updateAndBroadCast env lang grocery (map toggleItem ps)
+        Right ps ->
+            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+                Just items ->
+                    void $
+                        updateAndBroadCast
+                            env
+                            lang
+                            grocery
+                            ( over
+                                ShoppingList
+                                ( Map.insert
+                                    (groceryName grocery)
+                                    (map toggleItem items)
+                                )
+                                ps
+                            )
+                Nothing -> print $ "No items found for " <> groceryName grocery
         Left err -> print err
     return NoContent
   where
@@ -93,9 +133,9 @@ toggleProductH env lang grocery product' = liftIO $ do
 The list may not be empty, since it is not possible to return a 'raw' empty
 list. To send an empty list, wrap it in an appropriate newtype.
 -}
-asServerEvent :: (ToHtml a) => [a] -> ServerEvent
-asServerEvent =
-    ServerEvent Nothing Nothing
+asServerEvent :: (ToHtml a) => Maybe Text -> [a] -> ServerEvent
+asServerEvent msgName =
+    ServerEvent (Builder.fromByteString . encodeUtf8 <$> msgName) Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
 
 shoppingPageH :: Env -> Language -> Grocery -> Handler ShoppingPage
@@ -105,32 +145,75 @@ shoppingPageH env lang grocery = liftIO $ do
     case shoppingItems of
         Left err ->
             putStrLn err
-                >> return (ShoppingPage lang mempty (groceryName grocery) mempty (Nothing))
+                >> return
+                    ( ShoppingPage
+                        lang
+                        mempty
+                        (groceryName grocery)
+                        mempty
+                        (Nothing)
+                    )
         Right list ->
-            return
-                ( ShoppingPage
-                    lang
-                    mempty
-                    (groceryName grocery)
-                    (Either.fromRight mempty fetchedPromotions)
-                    (Just list)
-                )
+            case Map.lookup (groceryName grocery) (unShoppingList list) of
+                Nothing -> do
+                    print $ "Creating new shopping list for " <> groceryName grocery
+                    let newList =
+                            over
+                                ShoppingList
+                                (Map.insert (groceryName grocery) [])
+                                list
+                    void $ updateAndBroadCast env lang grocery newList
+                    return
+                        ( ShoppingPage
+                            lang
+                            mempty
+                            (groceryName grocery)
+                            (Either.fromRight mempty fetchedPromotions)
+                            (Just [])
+                        )
+                Just items ->
+                    return
+                        ( ShoppingPage
+                            lang
+                            mempty
+                            (groceryName grocery)
+                            (Either.fromRight mempty fetchedPromotions)
+                            (Just items)
+                        )
 
 addProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
 addProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            let newList = ShoppingItem product' Unchecked : ps
-             in updateAndBroadCast env lang grocery newList
+            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+                Just items ->
+                    let newList = ShoppingItem product' Unchecked : items
+                        shoppingList =
+                            over
+                                ShoppingList
+                                (Map.insert (groceryName grocery) newList)
+                                ps
+                     in updateAndBroadCast env lang grocery shoppingList
+                Nothing -> return NoContent
         Left err -> print err >> return NoContent
 
-updateAndBroadCast :: Env -> Language -> Grocery -> [ShoppingItem] -> IO NoContent
+updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO NoContent
 updateAndBroadCast env lang grocery items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
             (envBroadcastChan env)
-            (asServerEvent [ShoppingItems lang (groceryName grocery) items])
+            ( asServerEvent
+                (Just (groceryName grocery))
+                [ ShoppingItems
+                    lang
+                    (groceryName grocery)
+                    ( Maybe.fromMaybe
+                        []
+                        (unShoppingList items Map.!? groceryName grocery)
+                    )
+                ]
+            )
         >> return NoContent
 
 productListH ::
@@ -160,3 +243,10 @@ productListH lang grocery attributes search = liftIO $ do
                     products
                     (l lang Lexicon.SearchResults)
                     "searched-products"
+
+newtype ShoppingList = ShoppingList
+    { unShoppingList :: Map.Map Text [ShoppingItem]
+    }
+    deriving stock (Generic, Show)
+    deriving newtype (ToJSON, FromJSON)
+    deriving anyclass (Newtype)

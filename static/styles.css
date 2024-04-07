@@ -49,6 +49,14 @@ nav ul li a {
   text-decoration: underline;
 }
 
+.shopping-page-title a {
+  color: #fff;
+}
+
+.shopping-page-title .link-active {
+  color: #fff;
+  background-color: #888;
+}
 input[type="text"],
 input[type="number"] {
   border-radius: 5px;

@@ -5,7 +5,6 @@ import GHC.Generics (Generic)
 import Inter.Language (Language)
 import Servant (
     Capture,
-    FromHttpApiData (..),
     GenericMode (type (:-)),
     Get,
     NamedRoutes,

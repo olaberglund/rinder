@@ -102,7 +102,10 @@ data ShoppingPage
 
 instance ToHtml ShoppingPage where
     toHtml (ShoppingPage lang products grocery promotions shoppingList) = baseTemplate lang $ do
-        h1_ $ l_ lang Lexicon.WeeksShoppingList
+        h1_ [class_ "shopping-page-title"] $ do
+            l_ lang Lexicon.WeeksShoppingList <> " "
+            a_ ([href_ $ mkHref lang "/inkop/willys"] <> if grocery == "willys" then [class_ "link-active"] else []) "Willys" <> " "
+            a_ ([href_ $ mkHref lang "/inkop/ica"] <> if grocery == "ica" then [class_ "link-active"] else []) "Ica"
         div_ [class_ "tabs"] $ do
             button_
                 [ id_ "default-open"
@@ -157,7 +160,7 @@ instance ToHtml ShoppingPage where
                         [ id_ "shopping-list"
                         , HX.hxExt_ "sse"
                         , hxSseConnect_ (mkHref lang "/inkop/" <> grocery <> "/sse")
-                        , hxSseSwap_ "message"
+                        , hxSseSwap_ grocery
                         ]
                         $ toHtml (ShoppingItems lang grocery list)
     toHtmlRaw = toHtml
