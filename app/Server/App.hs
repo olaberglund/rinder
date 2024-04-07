@@ -40,7 +40,11 @@ server env =
                 , shoppingEP = \grocery ->
                     ShoppingApi
                         { shoppingPageEP = shoppingPageH env lang grocery
-                        , productListEP = productListH lang grocery (addToShoppingList lang (groceryName grocery))
+                        , productListEP =
+                            productListH
+                                lang
+                                grocery
+                                (addToShoppingList lang (groceryName grocery))
                         , addProductEP = addProductH env lang grocery
                         , toggleProductEP = toggleProductH env lang grocery
                         , removeCheckedEP = removeCheckedH env lang grocery

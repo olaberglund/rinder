@@ -111,7 +111,7 @@ saveExpenseH env lang uuid form = do
     res <- liftIO $ BS.readFile (envTransactionsFile env)
     case eitherDecodeStrict res of
         Right ts -> do
-            let newTs = map replaceExpense ts
+            let newTs = replaceExpense ts
             liftIO $ LBS.writeFile (envTransactionsFile env) (encode newTs)
             let mexp = findExpense uuid newTs
             case (mexp, mexp >>= singleDebtor) of
@@ -134,14 +134,15 @@ saveExpenseH env lang uuid form = do
                             (Just (l lang Lexicon.NoSuchExpense))
         Left err -> liftIO (print err) >> throwError err500
   where
-    replaceExpense :: Transaction -> Transaction
-    replaceExpense (ExpenseTransaction e) =
-        if expenseId e == uuid
-            then
-                ExpenseTransaction
-                    (toExpense form (expenseId e) (expenseDate e))
-            else ExpenseTransaction e
-    replaceExpense t = t
+    replaceExpense :: [Transaction] -> [Transaction]
+    replaceExpense ((ExpenseTransaction e) : es)
+        | expenseId e == uuid =
+            ExpenseTransaction
+                (toExpense form (expenseId e) (expenseDate e))
+                : es
+        | otherwise = ExpenseTransaction e : replaceExpense es
+    replaceExpense (e : es) = e : replaceExpense es
+    replaceExpense [] = []
 
 editExpensePageH :: Env -> Language -> UUID -> Handler EditExpensePage
 editExpensePageH env lang uuid = do

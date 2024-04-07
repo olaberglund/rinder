@@ -55,8 +55,7 @@ data ProductSearchList
 instance ToHtml ProductSearchList where
     toHtmlRaw = toHtml
     toHtml (ProductSearchList lang attributes products rubric listId) =
-        fieldset_ [class_ "products", id_ listId] $ do
-            legend_ (toHtml rubric)
+        div_ [class_ "products", id_ listId] $ do
             mapM_
                 ( \p -> div_
                     [class_ "product-container", title_ (productName p)]
@@ -103,26 +102,30 @@ data ShoppingPage
 instance ToHtml ShoppingPage where
     toHtml (ShoppingPage lang products grocery promotions shoppingList) = baseTemplate lang $ do
         h1_ [class_ "shopping-page-title"] $ do
-            l_ lang Lexicon.WeeksShoppingList <> " "
-            a_ ([href_ $ mkHref lang "/inkop/willys"] <> if grocery == "willys" then [class_ "link-active"] else []) "Willys" <> " "
-            a_ ([href_ $ mkHref lang "/inkop/ica"] <> if grocery == "ica" then [class_ "link-active"] else []) "Ica"
-        div_ [class_ "tabs"] $ do
-            button_
-                [ id_ "default-open"
-                , class_ "tab"
-                , onclick_ "openTab(event, 'shopping-list-container')"
-                ]
-                (l_ lang Lexicon.ShoppingList)
-            button_
-                [ class_ "tab"
-                , onclick_ "openTab(event, 'promotions-container')"
-                ]
-                (l_ lang Lexicon.Offers)
-            button_
-                [ class_ "tab"
-                , onclick_ "openTab(event, 'product-search-container')"
-                ]
-                (l_ lang Lexicon.Search)
+            l_ lang Lexicon.WeeksShoppingList
+            div_ $ do
+                a_ ([href_ $ mkHref lang "/inkop/willys"] <> if grocery == "willys" then [class_ "link-active"] else []) "Willys" <> " "
+                a_ ([href_ $ mkHref lang "/inkop/ica"] <> if grocery == "ica" then [class_ "link-active"] else []) "Ica"
+        div_ [class_ "sticky-tabs"] $ do
+            div_ [class_ "tabs"] $ do
+                button_
+                    [ id_ "default-open"
+                    , class_ "tab"
+                    , onclick_ "openTab(event, 'shopping-list-container')"
+                    ]
+                    (l_ lang Lexicon.ShoppingList)
+                button_
+                    [ class_ "tab"
+                    , onclick_ "openTab(event, 'promotions-container')"
+                    ]
+                    (l_ lang Lexicon.Offers)
+                button_
+                    [ class_ "tab"
+                    , onclick_ "openTab(event, 'product-search-container')"
+                    ]
+                    (l_ lang Lexicon.Search)
+                div_ [class_ "tab-shadow"] ""
+
         div_ [id_ "product-search-container", class_ "tabcontent"] $ do
             h2_ (l_ lang Lexicon.SearchAndAddProduct)
             form_ [class_ "gapped-form"] $
