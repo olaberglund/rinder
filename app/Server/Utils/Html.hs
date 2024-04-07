@@ -52,7 +52,7 @@ navbar_ lang = nav_ $ ul_ $ do
             (zip (enumFrom minBound) (map (toHtml . flag) (enumFrom minBound)))
     li_
         ( a_
-            [href_ $ mkHref lang "/inkop"]
+            [href_ $ mkHref lang "/inkop/willys"]
             (l_ lang Lexicon.NavbarShoppingList)
         )
     li_

@@ -21,7 +21,7 @@ import Server.Shopping.Html (
     Search,
     ShoppingPage,
  )
-import Store.Willys.Response (Product (..))
+import Store.Grocery qualified as Grocery
 
 data ShoppingApi as = ShoppingApi
     { shoppingPageEP :: !(as :- Get '[HTML] ShoppingPage)
@@ -40,14 +40,14 @@ data ShoppingApi as = ShoppingApi
     , addProductEP ::
         !( as
             :- "lagg-till"
-                :> ReqBody '[JSON] Product
+                :> ReqBody '[JSON] Grocery.Product
                 :> Post '[HTML] NoContent
          )
     -- ^ Add a product to the shopping list
     , toggleProductEP ::
         !( as
             :- "toggla"
-                :> ReqBody '[JSON] Product
+                :> ReqBody '[JSON] Grocery.Product
                 :> Post '[HTML] NoContent
          )
     -- ^ Toggle a product in the shopping list

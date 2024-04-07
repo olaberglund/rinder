@@ -20,6 +20,7 @@ import Server.Shopping.Html
 import Server.Split.Api
 import Server.Split.Handler
 import Server.Utils.Handler
+import Store.Grocery (groceryName)
 
 app :: Env -> Application
 app env =
@@ -36,14 +37,14 @@ server env =
         , pagesEP = \lang ->
             PagesApi
                 { languageHomePageEP = redirect (home lang)
-                , shoppingEP =
+                , shoppingEP = \grocery ->
                     ShoppingApi
-                        { shoppingPageEP = shoppingPageH env lang
-                        , productListEP = productListH lang (addToShoppingList lang)
-                        , addProductEP = addProductH env lang
-                        , toggleProductEP = toggleProductH env lang
-                        , removeCheckedEP = removeCheckedH env lang
-                        , removeAllEP = removeAllH env lang
+                        { shoppingPageEP = shoppingPageH env lang grocery
+                        , productListEP = productListH lang grocery (addToShoppingList lang (groceryName grocery))
+                        , addProductEP = addProductH env lang grocery
+                        , toggleProductEP = toggleProductH env lang grocery
+                        , removeCheckedEP = removeCheckedH env lang grocery
+                        , removeAllEP = removeAllH env lang grocery
                         , sseEP = sseH env
                         }
                 , splitEP =

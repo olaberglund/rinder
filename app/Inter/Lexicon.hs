@@ -250,6 +250,6 @@ translate = \case
         EN -> "Currently, editing expenses with more than two people is not supported."
         Simlish -> "Jibbly nooble dooble zibbly zorp"
     NoItems -> \case
-        SE -> "Inga varor att visa"
-        EN -> "No items to show"
-        Simlish -> "Noozle nubble booble"
+        SE -> "Din inköpslista är tom"
+        EN -> "Your shopping list is empty"
+        Simlish -> "Yobby shnibble shnabble zibby"

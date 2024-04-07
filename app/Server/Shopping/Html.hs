@@ -17,7 +17,6 @@ import Data.Aeson (
 import Data.Aeson.Text (encodeToLazyText)
 import Data.ByteString (toStrict)
 import Data.Coerce (coerce)
-import Data.Maybe qualified as Maybe
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
@@ -30,7 +29,8 @@ import Lucid
 import Lucid.Base qualified
 import Lucid.Htmx qualified as HX
 import Server.Utils.Html (baseTemplate)
-import Store.Willys.Response
+import Store.Grocery
+import Store.Willys.Response (StripAndLower)
 import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
 
 newtype Search = Search {unSearch :: Text}
@@ -64,7 +64,7 @@ instance ToHtml ProductSearchList where
                         div_ [class_ "product-image-container"] $
                             img_
                                 [ class_ "product-image"
-                                , src_ (Maybe.fromMaybe "" $ unImageUrl (productImage p))
+                                , src_ (productImageUrl p)
                                 ]
                         div_ [class_ "product-details"] $ do
                             div_ [class_ "product-details-text"] $ do
@@ -72,31 +72,36 @@ instance ToHtml ProductSearchList where
                                     toHtml (productName p)
                                 span_ [class_ "product-promo"] $
                                     toHtml $
-                                        getPrice p
+                                        productPrice p
                                 span_ [class_ "product-save"] $
                                     toHtml $
-                                        Maybe.fromMaybe "" $
-                                            getSavePrice p
+                                        productOffer p
                             button_
                                 (class_ "add-to-shopping-list-button" : attributes p)
                                 (l_ lang Lexicon.Add)
                 )
                 products
 
-addToShoppingList :: Language -> Product -> [Attribute]
-addToShoppingList lang p =
-    [ HX.hxPost_ (mkHref lang "/inkop/lagg-till")
+addToShoppingList :: Language -> Text -> Product -> [Attribute]
+addToShoppingList lang grocery p =
+    [ HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/lagg-till")
     , HX.hxExt_ "json-enc"
     , HX.hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)
     , HX.hxSwap_ "none"
     ]
 
 data ShoppingPage
-    = ShoppingPage !Language ![Product] ![Promotion] !(Maybe [ShoppingItem])
+    = ShoppingPage
+    { spLanguage :: !Language
+    , spProducts :: ![Product]
+    , spGrocery :: !Text
+    , spPromotions :: ![Product]
+    , spShoppingList :: !(Maybe [ShoppingItem])
+    }
     deriving stock (Show, Eq)
 
 instance ToHtml ShoppingPage where
-    toHtml (ShoppingPage lang products promotions shoppingList) = baseTemplate lang $ do
+    toHtml (ShoppingPage lang products grocery promotions shoppingList) = baseTemplate lang $ do
         h1_ $ l_ lang Lexicon.WeeksShoppingList
         div_ [class_ "tabs"] $ do
             button_
@@ -118,13 +123,13 @@ instance ToHtml ShoppingPage where
         div_ [id_ "product-search-container", class_ "tabcontent"] $ do
             h2_ (l_ lang Lexicon.SearchAndAddProduct)
             form_ [class_ "gapped-form"] $
-                productSearch_ lang mempty (mkHref lang "/inkop/produkter") products
+                productSearch_ lang mempty (mkHref lang "/inkop/" <> grocery <> "/produkter") products
         div_ [id_ "promotions-container", class_ "tabcontent"] $ do
             h2_ (l_ lang Lexicon.WeeksOffers)
             toHtml $
                 ProductSearchList
                     lang
-                    (addToShoppingList lang)
+                    (addToShoppingList lang grocery)
                     (coerce promotions)
                     (l lang Lexicon.Offers)
                     "promotion-products"
@@ -134,14 +139,14 @@ instance ToHtml ShoppingPage where
                 button_
                     [ class_ "remove-all-button"
                     , type_ "button"
-                    , HX.hxDelete_ $ mkHref lang "/inkop/ta-bort-alla"
+                    , HX.hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort-alla"
                     , HX.hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveAll)
                 button_
                     [ class_ "remove-checked-button"
                     , type_ "button"
-                    , HX.hxDelete_ $ mkApiHref "/inkop/ta-bort"
+                    , HX.hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort"
                     , HX.hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveMarked)
@@ -151,10 +156,10 @@ instance ToHtml ShoppingPage where
                     div_
                         [ id_ "shopping-list"
                         , HX.hxExt_ "sse"
-                        , hxSseConnect_ (mkApiHref "/inkop/sse")
+                        , hxSseConnect_ (mkHref lang "/inkop/" <> grocery <> "/sse")
                         , hxSseSwap_ "message"
                         ]
-                        $ toHtml (ShoppingItems lang list)
+                        $ toHtml (ShoppingItems lang grocery list)
     toHtmlRaw = toHtml
 
 data Checkbox = Checked | Unchecked
@@ -165,48 +170,43 @@ data ShoppingItem = ShoppingItem {siProduct :: !Product, siCheck :: !Checkbox}
     deriving stock (Generic, Show, Eq)
     deriving (FromJSON, ToJSON) via StripAndLower "si" ShoppingItem
 
-instance ToHtml ShoppingItem where
-    toHtml item = shoppingItem_ item
-    toHtmlRaw = toHtml
+-- instance ToHtml ShoppingItem where
+--     toHtml item = shoppingItem_ item
+--     toHtmlRaw = toHtml
 
-instance ToHtml [ShoppingItem] where
-    toHtmlRaw = toHtml
-    toHtml items = mapM_ shoppingItem_ items
-
-data ShoppingItems = ShoppingItems !Language ![ShoppingItem]
+data ShoppingItems = ShoppingItems !Language !Text ![ShoppingItem]
     deriving stock (Generic, Show, Eq)
 
 instance ToHtml ShoppingItems where
     toHtmlRaw = toHtml
-    toHtml (ShoppingItems lang items)
-        | null items = p_ [id_ "shopping-list-items"] (l_ lang Lexicon.NoItems)
-        | otherwise = div_ [id_ "shopping-list-items", class_ "bordered"] $ toHtml items
+    toHtml (ShoppingItems lang grocery items)
+        | null items = p_ (l_ lang Lexicon.NoItems)
+        | otherwise = div_ [id_ "shopping-list-items", class_ "bordered"] $ mapM_ (shoppingItem_ lang grocery) items
 
-shoppingItem_ :: (Monad m) => ShoppingItem -> HtmlT m ()
-shoppingItem_ item = div_ [class_ "shopping-item", id_ divId] $ do
-    img_ [class_ "item-image", src_ (Maybe.fromMaybe "" $ unImageUrl (productImage (siProduct item)))]
+shoppingItem_ :: (Monad m) => Language -> Text -> ShoppingItem -> HtmlT m ()
+shoppingItem_ lang grocery item = div_ [class_ "shopping-item", id_ divId] $ do
+    img_ [class_ "item-image", src_ (productImageUrl (siProduct item))]
     div_ [class_ "item-details"] $ do
         div_ [class_ "item-details-text"] $ do
             span_ [class_ "product-name"] $ toHtml (productName (siProduct item))
-            span_ [class_ "item-price"] $ toHtml $ getPrice (siProduct item)
+            span_ [class_ "item-price"] $ toHtml $ productPrice (siProduct item)
             span_ [class_ "item-save"] $
                 toHtml $
-                    Maybe.fromMaybe "" $
-                        getSavePrice (siProduct item)
+                    productOffer (siProduct item)
         input_ $
             [ class_ "item-checkbox"
             , type_ "checkbox"
-            , id_ (getId (siProduct item))
+            , id_ (productId (siProduct item))
             , name_ "name"
             , value_ (productName (siProduct item))
-            , HX.hxPost_ (mkApiHref "/inkop/toggla")
+            , HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/toggla")
             , HX.hxExt_ "json-enc"
             , HX.hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
             , autocomplete_ "off"
             ]
                 <> if (siCheck item) == Checked then [checked_] else []
   where
-    divId = "shopping-item-" <> getId (siProduct item)
+    divId = "shopping-item-" <> productId (siProduct item)
 
 productSearch_ ::
     (Monad m) =>

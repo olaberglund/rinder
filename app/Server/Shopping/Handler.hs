@@ -31,7 +31,7 @@ import Servant (
  )
 import Servant.API.EventStream (EventSource)
 import Servant.Types.SourceT qualified as S
-import Server.Env
+import Server.Env (Env (envBroadcastChan, envShoppingListFile))
 import Server.Shopping.Html (
     Checkbox (..),
     ProductSearchList (..),
@@ -40,8 +40,7 @@ import Server.Shopping.Html (
     ShoppingItems (..),
     ShoppingPage (..),
  )
-import Store.Willys.Client
-import Store.Willys.Response
+import Store.Grocery
 import System.Timeout qualified
 
 sseH :: Env -> Handler EventSource
@@ -63,23 +62,23 @@ toggle :: Checkbox -> Checkbox
 toggle Checked = Unchecked
 toggle Unchecked = Checked
 
-removeAllH :: Env -> Language -> Handler NoContent
-removeAllH env lang = liftIO $ updateAndBroadCast env lang []
+removeAllH :: Env -> Language -> Grocery -> Handler NoContent
+removeAllH env lang grocery = liftIO $ updateAndBroadCast env lang grocery []
 
-removeCheckedH :: Env -> Language -> Handler NoContent
-removeCheckedH env lang = liftIO $ do
+removeCheckedH :: Env -> Language -> Grocery -> Handler NoContent
+removeCheckedH env lang grocery = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newItems = filter ((== Unchecked) . siCheck) ps
-             in updateAndBroadCast env lang newItems
+             in updateAndBroadCast env lang grocery newItems
         Left err -> print err >> return NoContent
 
-toggleProductH :: Env -> Language -> Product -> Handler NoContent
-toggleProductH env lang product' = liftIO $ do
+toggleProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
+toggleProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
-        Right ps -> void $ updateAndBroadCast env lang (map toggleItem ps)
+        Right ps -> void $ updateAndBroadCast env lang grocery (map toggleItem ps)
         Left err -> print err
     return NoContent
   where
@@ -99,47 +98,49 @@ asServerEvent =
     ServerEvent Nothing Nothing
         . map (Builder.fromLazyByteString . renderBS . toHtml)
 
-shoppingPageH :: Env -> Language -> Handler ShoppingPage
-shoppingPageH env lang = liftIO $ do
-    fetchedPromotions <- runClientDefault fetchPromotions
+shoppingPageH :: Env -> Language -> Grocery -> Handler ShoppingPage
+shoppingPageH env lang grocery = liftIO $ do
+    fetchedPromotions <- groceryGetOffers grocery
     shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
     case shoppingItems of
         Left err ->
             putStrLn err
-                >> return (ShoppingPage lang mempty mempty (Nothing))
+                >> return (ShoppingPage lang mempty (groceryName grocery) mempty (Nothing))
         Right list ->
             return
                 ( ShoppingPage
                     lang
                     mempty
+                    (groceryName grocery)
                     (Either.fromRight mempty fetchedPromotions)
                     (Just list)
                 )
 
-addProductH :: Env -> Language -> Product -> Handler NoContent
-addProductH env lang product' = liftIO $ do
+addProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
+addProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
             let newList = ShoppingItem product' Unchecked : ps
-             in updateAndBroadCast env lang newList
+             in updateAndBroadCast env lang grocery newList
         Left err -> print err >> return NoContent
 
-updateAndBroadCast :: Env -> Language -> [ShoppingItem] -> IO NoContent
-updateAndBroadCast env lang items =
+updateAndBroadCast :: Env -> Language -> Grocery -> [ShoppingItem] -> IO NoContent
+updateAndBroadCast env lang grocery items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
             (envBroadcastChan env)
-            (asServerEvent [ShoppingItems lang items])
+            (asServerEvent [ShoppingItems lang (groceryName grocery) items])
         >> return NoContent
 
 productListH ::
     Language ->
+    Grocery ->
     (Product -> [Attribute]) ->
     Search ->
     Handler ProductSearchList
-productListH lang attributes search = liftIO $ do
-    res <- runClientDefault (fetchProducts (unSearch search))
+productListH lang grocery attributes search = liftIO $ do
+    res <- groceryGetSearchProduct grocery (unSearch search)
     case res of
         Left err ->
             print err

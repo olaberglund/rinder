@@ -1,12 +1,14 @@
 -- | Encoding the API documented here: https://github.com/svendahlstrand/ica-api/blob/master/api-referens.md
-module Store.Ica.Response () where
+module Store.Ica.Response where
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
 import Deriving.Aeson qualified
 import GHC.Base (Symbol)
 import GHC.Generics (Generic)
+import Store.Willys.Response (PascalToCamel)
 
 data Offer = Offer
     { offerId :: Text -- OfferId
@@ -58,9 +60,6 @@ data Response a (b :: Symbol) = Response
                  ]
                 (Response a b)
 
-type ResponseJSON a b =
-    CustomJSON '[FieldLabelModifier '[Rename "unResponse" a]] b
-
 type ItemResponse = Response [Item] "Items"
 
 type OfferResponse = Response [Offer] "Offers"
@@ -80,3 +79,63 @@ data Item = Item
                      ]
                  ]
                 Item
+
+type EntityResponse = Response ProductResponse "entities"
+
+type ProductResponse = Response (Map.Map Text Product) "product"
+
+data Product = Product
+    { productId :: Text -- productId
+    , productName :: Text -- name
+    , productPrice :: HistoryPrice -- price
+    , productImage :: Image -- image
+    -- , productSize :: Size -- size
+    }
+    deriving stock (Show, Generic, Eq)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[ FieldLabelModifier
+                    '[ StripPrefix "product"
+                     , PascalToCamel
+                     , Rename "id" "productId"
+                     ]
+                 ]
+                Product
+
+data HistoryPrice = HistoryPrice
+    { historyPriceCurrent :: Price -- current
+    }
+    deriving stock (Show, Generic, Eq)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[Rename "historyPriceCurrent" "current"]]
+                HistoryPrice
+
+newtype Price = Price {unPrice :: Text} -- amount
+    deriving stock (Show, Generic)
+    deriving newtype (Eq)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[Rename "unPrice" "amount"]]
+                Price
+
+newtype Image = Image {unImage :: Text} -- src
+    deriving stock (Show, Generic)
+    deriving newtype (Eq, Ord)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[Rename "unImage" "src"]]
+                Image
+
+newtype Size = Size {unSize :: Text} -- value
+    deriving stock (Show, Generic)
+    deriving newtype (Eq, Ord)
+    deriving
+        (FromJSON, ToJSON)
+        via CustomJSON
+                '[FieldLabelModifier '[Rename "unSize" "value"]]
+                Size

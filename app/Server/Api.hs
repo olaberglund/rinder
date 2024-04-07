@@ -5,6 +5,7 @@ import GHC.Generics (Generic)
 import Inter.Language (Language)
 import Servant (
     Capture,
+    FromHttpApiData (..),
     GenericMode (type (:-)),
     Get,
     NamedRoutes,
@@ -15,6 +16,7 @@ import Servant (
 import Servant.HTML.Lucid (HTML)
 import Server.Shopping.Api (ShoppingApi)
 import Server.Split.Api (SplitApi)
+import Store.Grocery (Grocery)
 
 {- | The root API which contains the sub-apis for the shopping list and
 split pages.
@@ -34,7 +36,7 @@ data RootApi as = RootApi
 data PagesApi as = PagesApi {
      languageHomePageEP :: !(as :- Get '[HTML] NoContent),
     -- | entry point to the shopping list page
-     shoppingEP :: !(as :- "inkop" :> NamedRoutes ShoppingApi)
+     shoppingEP :: !(as :- "inkop" :> Capture "grocery" Grocery :> NamedRoutes ShoppingApi)
     -- | entry point to the expense split page
     , splitEP :: !(as :- "split" :> NamedRoutes SplitApi)
     }

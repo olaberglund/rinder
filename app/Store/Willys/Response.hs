@@ -10,6 +10,7 @@ module Store.Willys.Response (
     getPrice,
     getSavePrice,
     getId,
+    PascalToCamel,
 ) where
 
 import Control.Applicative ((<|>))
@@ -61,8 +62,6 @@ newtype Pagination = Pagination {unPagination :: Int}
         via CustomJSON
                 '[FieldLabelModifier '[Rename "unPagination" "numberOfPages"]]
                 Pagination
-
-{- Promotion -}
 
 newtype Promotion = Promotion {unPromotion :: Product}
     deriving stock (Generic, Show)
