@@ -55,6 +55,7 @@ data Phrase
     | ExpenseSaved
     | MaxTwoPeople
     | NoItems
+    | Note
     deriving stock (Show)
 
 l_ :: (Monad m) => Language -> Phrase -> HtmlT m ()
@@ -253,3 +254,7 @@ translate = \case
         SE -> "Din inköpslista är tom"
         EN -> "Your shopping list is empty"
         Simlish -> "Yobby shnibble shnabble zibby"
+    Note -> \case
+        SE -> "Anteckning"
+        EN -> "Note"
+        Simlish -> "Nooble"

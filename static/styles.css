@@ -250,14 +250,31 @@ select {
   border: 1px solid #fff;
 }
 
-.shopping-item {
+.shopping-item-container {
   display: flex;
   padding: 10px;
+  flex-direction: column;
   border-bottom: 2px dashed #121212;
-  gap: 20px;
 }
-.shopping-item:last-child {
+
+.shopping-item-info {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.shopping-item-container:last-child {
   border-bottom: none;
+}
+
+.shopping-item-note-container {
+  display: flex;
+  gap: 10px;
+}
+
+.shopping-item-note-container input {
+  flex: 1;
+  min-width: 0;
 }
 
 .shopping-list-title {

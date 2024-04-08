@@ -49,6 +49,7 @@ server env =
                         , toggleProductEP = toggleProductH env lang grocery
                         , removeCheckedEP = removeCheckedH env lang grocery
                         , removeAllEP = removeAllH env lang grocery
+                        , noteProductEP = noteProductH env lang grocery
                         , sseEP = sseH env
                         }
                 , splitEP =

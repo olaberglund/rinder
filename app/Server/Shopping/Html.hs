@@ -5,6 +5,7 @@ module Server.Shopping.Html (
     ShoppingPage (..),
     ProductSearchList (..),
     Search (unSearch),
+    Note (..),
     addToShoppingList,
 )
 where
@@ -22,7 +23,7 @@ import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import Deriving.Aeson (CustomJSON (..))
 import GHC.Generics (Generic)
-import Inter.Language (Language, mkApiHref, mkHref)
+import Inter.Language (Language, mkHref)
 import Inter.Lexicon (l, l_)
 import Inter.Lexicon qualified as Lexicon
 import Lucid
@@ -36,6 +37,13 @@ import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
 newtype Search = Search {unSearch :: Text}
     deriving stock (Generic, Show)
     deriving newtype (Eq)
+
+data Note = Note
+    { noteContent :: Text
+    , noteId :: Text
+    }
+    deriving stock (Generic, Show, Eq)
+    deriving anyclass (FromForm)
 
 instance FromForm Search where
     fromForm form = Search <$> parseUnique "query" form
@@ -54,7 +62,7 @@ data ProductSearchList
 
 instance ToHtml ProductSearchList where
     toHtmlRaw = toHtml
-    toHtml (ProductSearchList lang attributes products rubric listId) =
+    toHtml (ProductSearchList lang attributes products _rubric listId) =
         div_ [class_ "products", id_ listId] $ do
             mapM_
                 ( \p -> div_
@@ -172,7 +180,11 @@ data Checkbox = Checked | Unchecked
     deriving stock (Generic, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
 
-data ShoppingItem = ShoppingItem {siProduct :: !Product, siCheck :: !Checkbox}
+data ShoppingItem = ShoppingItem
+    { siProduct :: !Product
+    , siCheck :: !Checkbox
+    , siNote :: !Text
+    }
     deriving stock (Generic, Show, Eq)
     deriving (FromJSON, ToJSON) via StripAndLower "si" ShoppingItem
 
@@ -190,27 +202,42 @@ instance ToHtml ShoppingItems where
         | otherwise = div_ [id_ "shopping-list-items", class_ "bordered"] $ mapM_ (shoppingItem_ lang grocery) items
 
 shoppingItem_ :: (Monad m) => Language -> Text -> ShoppingItem -> HtmlT m ()
-shoppingItem_ lang grocery item = div_ [class_ "shopping-item", id_ divId] $ do
-    img_ [class_ "item-image", src_ (productImageUrl (siProduct item))]
-    div_ [class_ "item-details"] $ do
-        div_ [class_ "item-details-text"] $ do
-            span_ [class_ "product-name"] $ toHtml (productName (siProduct item))
-            span_ [class_ "item-price"] $ toHtml $ productPrice (siProduct item)
-            span_ [class_ "item-save"] $
-                toHtml $
-                    productOffer (siProduct item)
-        input_ $
-            [ class_ "item-checkbox"
-            , type_ "checkbox"
-            , id_ (productId (siProduct item))
-            , name_ "name"
-            , value_ (productName (siProduct item))
-            , HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/toggla")
-            , HX.hxExt_ "json-enc"
-            , HX.hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
-            , autocomplete_ "off"
+shoppingItem_ lang grocery item = div_ [class_ "shopping-item-container", id_ divId] $ do
+    div_ [class_ "shopping-item-info"] $ do
+        img_ [class_ "item-image", src_ (productImageUrl (siProduct item))]
+        div_ [class_ "item-details"] $ do
+            div_ [class_ "item-details-text"] $ do
+                span_ [class_ "product-name"] $ toHtml (productName (siProduct item))
+                span_ [class_ "item-price"] $ toHtml $ productPrice (siProduct item)
+                span_ [class_ "item-save"] $
+                    toHtml $
+                        productOffer (siProduct item)
+            input_ $
+                [ class_ "item-checkbox"
+                , type_ "checkbox"
+                , id_ (productId (siProduct item))
+                , name_ "name"
+                , HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/toggla")
+                , HX.hxExt_ "json-enc"
+                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
+                , autocomplete_ "off"
+                ]
+                    <> if (siCheck item) == Checked then [checked_] else []
+    form_ [class_ "shopping-item-note-container", autocomplete_ "off"] $ do
+        input_
+            [ class_ "item-note"
+            , type_ "text"
+            , name_ "noteContent"
+            , value_ (siNote item)
+            , placeholder_ (l lang Lexicon.Note)
             ]
-                <> if (siCheck item) == Checked then [checked_] else []
+        input_ [type_ "hidden", name_ "noteId", value_ (productId (siProduct item))]
+        button_
+            [ type_ "submit"
+            , HX.hxSwap_ "none"
+            , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
+            ]
+            (l_ lang Lexicon.Save)
   where
     divId = "shopping-item-" <> productId (siProduct item)
 

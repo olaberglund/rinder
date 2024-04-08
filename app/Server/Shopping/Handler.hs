@@ -6,6 +6,7 @@ module Server.Shopping.Handler (
     shoppingPageH,
     addProductH,
     productListH,
+    noteProductH,
 ) where
 
 import Control.Concurrent (Chan, dupChan, readChan, writeChan)
@@ -42,6 +43,7 @@ import Servant.Types.SourceT qualified as S
 import Server.Env (Env (envBroadcastChan, envShoppingListFile))
 import Server.Shopping.Html (
     Checkbox (..),
+    Note (noteContent, noteId),
     ProductSearchList (..),
     Search (unSearch),
     ShoppingItem (..),
@@ -188,7 +190,7 @@ addProductH env lang grocery product' = liftIO $ do
         Right ps ->
             case Map.lookup (groceryName grocery) (unShoppingList ps) of
                 Just items ->
-                    let newList = ShoppingItem product' Unchecked : items
+                    let newList = ShoppingItem product' Unchecked "" : items
                         shoppingList =
                             over
                                 ShoppingList
@@ -197,6 +199,28 @@ addProductH env lang grocery product' = liftIO $ do
                      in updateAndBroadCast env lang grocery shoppingList
                 Nothing -> return NoContent
         Left err -> print err >> return NoContent
+
+noteProductH :: Env -> Language -> Grocery -> Note -> Handler NoContent
+noteProductH env lang grocery note = liftIO $ do
+    res <- BS.readFile (envShoppingListFile env)
+    case eitherDecodeStrict res of
+        Right ps ->
+            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+                Just items ->
+                    let newList = map modifyNote items
+                        shoppingList =
+                            over
+                                ShoppingList
+                                (Map.insert (groceryName grocery) newList)
+                                ps
+                     in updateAndBroadCast env lang grocery shoppingList
+                Nothing -> return NoContent
+        Left err -> print err >> return NoContent
+  where
+    modifyNote :: ShoppingItem -> ShoppingItem
+    modifyNote i
+        | productId (siProduct i) == noteId note = i{siNote = noteContent note}
+        | otherwise = i
 
 updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO NoContent
 updateAndBroadCast env lang grocery items =

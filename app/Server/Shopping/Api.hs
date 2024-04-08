@@ -14,9 +14,11 @@ import Servant (
     StreamGet,
     type (:>),
  )
+import Servant.API (Patch)
 import Servant.API.EventStream (EventSource, EventStream)
 import Servant.HTML.Lucid (HTML)
 import Server.Shopping.Html (
+    Note,
     ProductSearchList,
     Search,
     ShoppingPage,
@@ -49,6 +51,13 @@ data ShoppingApi as = ShoppingApi
             :- "toggla"
                 :> ReqBody '[JSON] Grocery.Product
                 :> Post '[HTML] NoContent
+         )
+    -- ^ Toggle a product in the shopping list
+    , noteProductEP ::
+        !( as
+            :- "anteckna"
+                :> ReqBody '[FormUrlEncoded] Note
+                :> Patch '[HTML] NoContent
          )
     -- ^ Toggle a product in the shopping list
     }
