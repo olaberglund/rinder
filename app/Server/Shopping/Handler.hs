@@ -11,7 +11,7 @@ module Server.Shopping.Handler (
 ) where
 
 import Control.Concurrent (Chan, dupChan, readChan, writeChan)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Newtype.Generics (Newtype, over)
 import Data.Aeson (
@@ -85,30 +85,36 @@ removeAllH env lang grocery = liftIO $ do
                 lang
                 grocery
                 (over ShoppingList (Map.adjust (const []) (groceryName grocery)) sl)
-        Left err -> print err >> return NoContent
+        Left err -> print err
+    return NoContent
 
 removeCheckedH :: Env -> Language -> Grocery -> Handler NoContent
 removeCheckedH env lang grocery = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
+        Left err -> print err
         Right sl ->
-            case Map.lookup (groceryName grocery) (unShoppingList sl) of
+            case listOfGrocery grocery sl of
                 Just items ->
                     let newItems = filter ((== Unchecked) . siCheck) items
-                     in updateAndBroadCast env lang grocery $
-                            over
+                     in updateAndBroadCast
+                            env
+                            lang
+                            grocery
+                            ( over
                                 ShoppingList
                                 (Map.insert (groceryName grocery) newItems)
                                 sl
-                Nothing -> return NoContent
-        Left err -> print err >> return NoContent
+                            )
+                Nothing -> print $ "No items found for " <> groceryName grocery
+    return NoContent
 
 toggleProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
 toggleProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+            case listOfGrocery grocery ps of
                 Just items ->
                     void $
                         updateAndBroadCast
@@ -159,7 +165,7 @@ shoppingPageH env lang grocery = liftIO $ do
                         (Nothing)
                     )
         Right list ->
-            case Map.lookup (groceryName grocery) (unShoppingList list) of
+            case listOfGrocery grocery list of
                 Nothing -> do
                     print $ "Creating new shopping list for " <> groceryName grocery
                     let newList =
@@ -191,49 +197,60 @@ addProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            case Map.lookup (groceryName grocery) (unShoppingList ps) of
-                Just items ->
-                    let newList = ShoppingItem product' Unchecked "" : items
-                        shoppingList =
-                            over
-                                ShoppingList
-                                (Map.insert (groceryName grocery) newList)
-                                ps
-                     in updateAndBroadCast env lang grocery shoppingList
-                Nothing -> return NoContent
-        Left err -> print err >> return NoContent
+            case listOfGrocery grocery ps of
+                Just items -> updateList ps items
+                Nothing -> pure ()
+        Left err -> print err
+    return NoContent
+  where
+    updateList :: ShoppingList -> [ShoppingItem] -> IO ()
+    updateList ps items = when (product' `notElem` map siProduct items) $ do
+        let newList = ShoppingItem product' Unchecked "" : items
+            shoppingList =
+                over
+                    ShoppingList
+                    (Map.insert (groceryName grocery) newList)
+                    ps
+        updateAndBroadCast env lang grocery shoppingList
 
--- Reordering (productid) (direction )
+listOfGrocery :: Grocery -> ShoppingList -> Maybe [ShoppingItem]
+listOfGrocery grocery list =
+    Map.lookup
+        (groceryName grocery)
+        (unShoppingList list)
+
 reorderItemH :: Env -> Language -> Grocery -> Reordering -> Handler NoContent
 reorderItemH env lang grocery (Reordering pId dir) = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+            case listOfGrocery grocery ps of
                 Just items ->
-                    let newList = reorderItem items
-                        shoppingList =
-                            over
-                                ShoppingList
-                                (Map.insert (groceryName grocery) newList)
-                                ps
-                     in updateAndBroadCast env lang grocery shoppingList
-                Nothing -> return NoContent
-        Left err -> print err >> return NoContent
+                    updateAndBroadCast env lang grocery (reorderedList ps items)
+                Nothing -> pure ()
+        Left err -> print err
+    return NoContent
   where
-    reorderItem :: [ShoppingItem] -> [ShoppingItem]
-    reorderItem (x : y : xs)
+    reorderedList :: ShoppingList -> [ShoppingItem] -> ShoppingList
+    reorderedList ps items =
+        over
+            ShoppingList
+            (Map.insert (groceryName grocery) (reorder items))
+            ps
+
+    reorder :: [ShoppingItem] -> [ShoppingItem]
+    reorder (x : y : xs)
         | productId (siProduct x) == pId && dir == Down = y : x : xs
         | productId (siProduct y) == pId && dir == Up = y : x : xs
-        | otherwise = x : reorderItem (y : xs)
-    reorderItem xs = xs
+        | otherwise = x : reorder (y : xs)
+    reorder xs = xs
 
 noteProductH :: Env -> Language -> Grocery -> Note -> Handler NoContent
 noteProductH env lang grocery note = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+            case listOfGrocery grocery ps of
                 Just items ->
                     let newList = map modifyNote items
                         shoppingList =
@@ -242,15 +259,16 @@ noteProductH env lang grocery note = liftIO $ do
                                 (Map.insert (groceryName grocery) newList)
                                 ps
                      in updateAndBroadCast env lang grocery shoppingList
-                Nothing -> return NoContent
-        Left err -> print err >> return NoContent
+                Nothing -> pure ()
+        Left err -> print err
+    return NoContent
   where
     modifyNote :: ShoppingItem -> ShoppingItem
     modifyNote i
         | productId (siProduct i) == noteId note = i{siNote = noteContent note}
         | otherwise = i
 
-updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO NoContent
+updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO ()
 updateAndBroadCast env lang grocery items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
@@ -266,7 +284,6 @@ updateAndBroadCast env lang grocery items =
                     )
                 ]
             )
-        >> return NoContent
 
 productListH ::
     Language ->

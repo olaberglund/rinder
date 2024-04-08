@@ -590,5 +590,8 @@ input[type="radio"] {
 
 .shopping-item-reorder-container button {
   font-size: 1.25em;
+  padding: 0;
+  border: none;
+  background-color: transparent;
   flex: 1;
 }
