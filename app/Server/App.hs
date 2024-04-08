@@ -39,18 +39,19 @@ server env =
                 { languageHomePageEP = redirect (home lang)
                 , shoppingEP = \grocery ->
                     ShoppingApi
-                        { shoppingPageEP = shoppingPageH env lang grocery
-                        , productListEP =
+                        { saPageEP = shoppingPageH env lang grocery
+                        , saItemListEP =
                             productListH
                                 lang
                                 grocery
                                 (addToShoppingList lang (groceryName grocery))
-                        , addProductEP = addProductH env lang grocery
-                        , toggleProductEP = toggleProductH env lang grocery
-                        , removeCheckedEP = removeCheckedH env lang grocery
-                        , removeAllEP = removeAllH env lang grocery
-                        , noteProductEP = noteProductH env lang grocery
-                        , sseEP = sseH env
+                        , saAddItemEP = addProductH env lang grocery
+                        , saToggleItemEP = toggleProductH env lang grocery
+                        , saRemoveCheckedEP = removeCheckedH env lang grocery
+                        , saRemoveAllEP = removeAllH env lang grocery
+                        , saModifyItemNoteEP = noteProductH env lang grocery
+                        , saReorderItemEP = reorderItemH env lang grocery
+                        , saSseEP = sseH env
                         }
                 , splitEP =
                     SplitApi

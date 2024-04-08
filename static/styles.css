@@ -581,3 +581,14 @@ input[type="radio"] {
 .tabcontent {
   display: none;
 }
+
+.shopping-item-reorder-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.shopping-item-reorder-container button {
+  font-size: 1.25em;
+  flex: 1;
+}

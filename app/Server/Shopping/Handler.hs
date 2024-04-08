@@ -7,6 +7,7 @@ module Server.Shopping.Handler (
     addProductH,
     productListH,
     noteProductH,
+    reorderItemH,
 ) where
 
 import Control.Concurrent (Chan, dupChan, readChan, writeChan)
@@ -43,8 +44,10 @@ import Servant.Types.SourceT qualified as S
 import Server.Env (Env (envBroadcastChan, envShoppingListFile))
 import Server.Shopping.Html (
     Checkbox (..),
+    Direction (..),
     Note (noteContent, noteId),
     ProductSearchList (..),
+    Reordering (..),
     Search (unSearch),
     ShoppingItem (..),
     ShoppingItems (..),
@@ -199,6 +202,31 @@ addProductH env lang grocery product' = liftIO $ do
                      in updateAndBroadCast env lang grocery shoppingList
                 Nothing -> return NoContent
         Left err -> print err >> return NoContent
+
+-- Reordering (productid) (direction )
+reorderItemH :: Env -> Language -> Grocery -> Reordering -> Handler NoContent
+reorderItemH env lang grocery (Reordering pId dir) = liftIO $ do
+    res <- BS.readFile (envShoppingListFile env)
+    case eitherDecodeStrict res of
+        Right ps ->
+            case Map.lookup (groceryName grocery) (unShoppingList ps) of
+                Just items ->
+                    let newList = reorderItem items
+                        shoppingList =
+                            over
+                                ShoppingList
+                                (Map.insert (groceryName grocery) newList)
+                                ps
+                     in updateAndBroadCast env lang grocery shoppingList
+                Nothing -> return NoContent
+        Left err -> print err >> return NoContent
+  where
+    reorderItem :: [ShoppingItem] -> [ShoppingItem]
+    reorderItem (x : y : xs)
+        | productId (siProduct x) == pId && dir == Down = y : x : xs
+        | productId (siProduct y) == pId && dir == Up = y : x : xs
+        | otherwise = x : reorderItem (y : xs)
+    reorderItem xs = xs
 
 noteProductH :: Env -> Language -> Grocery -> Note -> Handler NoContent
 noteProductH env lang grocery note = liftIO $ do

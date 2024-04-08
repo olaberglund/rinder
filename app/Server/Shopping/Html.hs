@@ -7,6 +7,8 @@ module Server.Shopping.Html (
     Search (unSearch),
     Note (..),
     addToShoppingList,
+    Reordering (..),
+    Direction (..),
 )
 where
 
@@ -44,6 +46,17 @@ data Note = Note
     }
     deriving stock (Generic, Show, Eq)
     deriving anyclass (FromForm)
+
+data Direction = Up | Down
+    deriving stock (Generic, Show, Eq)
+    deriving anyclass (FromJSON, ToJSON)
+
+data Reordering = Reordering
+    { reorderingProductId :: Text
+    , reorderingDirection :: Direction
+    }
+    deriving stock (Generic, Show, Eq)
+    deriving anyclass (FromJSON, ToJSON)
 
 instance FromForm Search where
     fromForm form = Search <$> parseUnique "query" form
@@ -204,6 +217,21 @@ instance ToHtml ShoppingItems where
 shoppingItem_ :: (Monad m) => Language -> Text -> ShoppingItem -> HtmlT m ()
 shoppingItem_ lang grocery item = div_ [class_ "shopping-item-container", id_ divId] $ do
     div_ [class_ "shopping-item-info"] $ do
+        div_ [class_ "shopping-item-reorder-container"] $ do
+            button_
+                [ class_ "reorder-button"
+                , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
+                , HX.hxExt_ "json-enc"
+                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Up))
+                ]
+                "⬆️"
+            button_
+                [ class_ "reorder-button"
+                , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
+                , HX.hxExt_ "json-enc"
+                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Down))
+                ]
+                "⬇️"
         img_ [class_ "item-image", src_ (productImageUrl (siProduct item))]
         div_ [class_ "item-details"] $ do
             div_ [class_ "item-details-text"] $ do
@@ -229,6 +257,7 @@ shoppingItem_ lang grocery item = div_ [class_ "shopping-item-container", id_ di
             , type_ "text"
             , name_ "noteContent"
             , value_ (siNote item)
+            , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
             , placeholder_ (l lang Lexicon.Note)
             ]
         input_ [type_ "hidden", name_ "noteId", value_ (productId (siProduct item))]

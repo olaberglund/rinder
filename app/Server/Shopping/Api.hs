@@ -20,45 +20,52 @@ import Servant.HTML.Lucid (HTML)
 import Server.Shopping.Html (
     Note,
     ProductSearchList,
+    Reordering,
     Search,
     ShoppingPage,
  )
 import Store.Grocery qualified as Grocery
 
 data ShoppingApi as = ShoppingApi
-    { shoppingPageEP :: !(as :- Get '[HTML] ShoppingPage)
-    , removeCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] NoContent)
-    , removeAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] NoContent)
-    , sseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
+    { saPageEP :: !(as :- Get '[HTML] ShoppingPage)
+    , saRemoveCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] NoContent)
+    , saRemoveAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] NoContent)
+    , saSseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
     -- ^ Server-sent events endpoint for the shopping list. A client connects
     --     and receives an event each time a user modifies the shopping list.
-    , productListEP ::
+    , saItemListEP ::
         !( as
             :- "produkter"
                 :> ReqBody '[FormUrlEncoded] Search
                 :> Post '[HTML] ProductSearchList
          )
     -- ^ The list of products matching the search query
-    , addProductEP ::
+    , saAddItemEP ::
         !( as
             :- "lagg-till"
                 :> ReqBody '[JSON] Grocery.Product
                 :> Post '[HTML] NoContent
          )
     -- ^ Add a product to the shopping list
-    , toggleProductEP ::
+    , saToggleItemEP ::
         !( as
             :- "toggla"
                 :> ReqBody '[JSON] Grocery.Product
                 :> Post '[HTML] NoContent
          )
-    -- ^ Toggle a product in the shopping list
-    , noteProductEP ::
+    -- ^ Modify the note of an item
+    , saModifyItemNoteEP ::
         !( as
             :- "anteckna"
                 :> ReqBody '[FormUrlEncoded] Note
                 :> Patch '[HTML] NoContent
          )
-    -- ^ Toggle a product in the shopping list
+    -- ^ Reorder item
+    , saReorderItemEP ::
+        !( as
+            :- "flytta"
+                :> ReqBody '[JSON] Reordering
+                :> Patch '[HTML] NoContent
+         )
     }
     deriving stock (Generic)
