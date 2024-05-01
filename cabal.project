@@ -1,0 +1,6 @@
+packages: .
+
+constraints:
+  zlib +bundled-c-zlib
+
+allow-newer: all
