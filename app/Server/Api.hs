@@ -1,21 +1,15 @@
 -- | This module defines the API for the server.
 module Server.Api (RootApi (..), PagesApi (..)) where
 
-import GHC.Generics (Generic)
-import Inter.Language (Language)
-import Servant (
-    Capture,
-    GenericMode (type (:-)),
-    Get,
-    NamedRoutes,
-    NoContent (..),
-    Raw,
-    type (:>),
- )
-import Servant.HTML.Lucid (HTML)
-import Server.Shopping.Api (ShoppingApi)
-import Server.Split.Api (SplitApi)
-import Store.Grocery (Grocery)
+import           GHC.Generics        (Generic)
+import           Inter.Language      (Language)
+import           Servant             (Capture, GenericMode (type (:-)), Get,
+                                      NamedRoutes, NoContent (..), Raw,
+                                      type (:>))
+import           Servant.HTML.Lucid  (HTML)
+import           Server.Shopping.Api (ShoppingApi)
+import           Server.Split.Api    (SplitApi)
+import           Store.Grocery       (Grocery)
 
 {- | The root API which contains the sub-apis for the shopping list and
 split pages.
@@ -27,8 +21,8 @@ provided when constructing the API.
 data RootApi as = RootApi
     { homePageEP :: !(as :- Get '[HTML] NoContent)
     -- | static files are served from the "static" directory
-    , staticEP :: !(as :- "static" :> Raw)
-    , pagesEP :: !(as :- Capture "lang" Language :> NamedRoutes PagesApi)
+    , staticEP   :: !(as :- "static" :> Raw)
+    , pagesEP    :: !(as :- Capture "lang" Language :> NamedRoutes PagesApi)
     }
     deriving stock (Generic)
 

@@ -3,9 +3,9 @@ for the application (internationalization).
 -}
 module Inter.Lexicon (Phrase (..), Language (..), l, l_, mkHref, mkApiHref, toHref, flag) where
 
-import Data.Text (Text)
-import Inter.Language
-import Lucid (HtmlT, toHtml)
+import           Data.Text      (Text)
+import           Inter.Language
+import           Lucid          (HtmlT, toHtml)
 
 data Phrase
     = AddExpenseLegend

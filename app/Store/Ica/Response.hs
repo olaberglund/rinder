@@ -1,23 +1,24 @@
 -- | Encoding the API documented here: https://github.com/svendahlstrand/ica-api/blob/master/api-referens.md
 module Store.Ica.Response where
 
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Map qualified as Map
-import Data.Text (Text)
-import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
-import Deriving.Aeson qualified
-import GHC.Base (Symbol)
-import GHC.Generics (Generic)
-import Store.Willys.Response (PascalToCamel)
+import           Data.Aeson            (FromJSON, ToJSON)
+import qualified Data.Map              as Map
+import           Data.Text             (Text)
+import           Deriving.Aeson        (CustomJSON, FieldLabelModifier, Rename,
+                                        StripPrefix)
+import qualified Deriving.Aeson
+import           GHC.Base              (Symbol)
+import           GHC.Generics          (Generic)
+import           Store.Willys.Response (PascalToCamel)
 
 data Offer = Offer
-    { offerId :: Text -- OfferId
-    , offerStoreId :: [Int] -- StoreId
+    { offerId           :: Text -- OfferId
+    , offerStoreId      :: [Int] -- StoreId
     , offerArticleGroup :: [Int] -- ArticleGroup
-    , offerType :: Text -- OfferType
-    , offerImageUrl :: Text -- ImageUrl
-    , offerArticles :: [Article] -- Articles
-    , offerCondition :: Text -- OfferCondition
+    , offerType         :: Text -- OfferType
+    , offerImageUrl     :: Text -- ImageUrl
+    , offerArticles     :: [Article] -- Articles
+    , offerCondition    :: Text -- OfferCondition
     }
     deriving stock (Show, Generic, Eq)
     deriving
@@ -33,7 +34,7 @@ data Offer = Offer
                 Offer
 
 data Article = Article
-    { articleId :: Text -- EanId
+    { articleId          :: Text -- EanId
     , articleDescription :: Text -- ArticleDescription
     }
     deriving stock (Show, Generic, Eq)
@@ -65,8 +66,8 @@ type ItemResponse = Response [Item] "Items"
 type OfferResponse = Response [Offer] "Offers"
 
 data Item = Item
-    { itemDescription :: Text -- ItemDescription
-    , itemArticleGroup :: Int -- ArticleGroup
+    { itemDescription          :: Text -- ItemDescription
+    , itemArticleGroup         :: Int -- ArticleGroup
     , itemArticleGroupExtended :: Int -- ArticleGroupExtended
     }
     deriving stock (Show, Generic, Eq)
@@ -85,8 +86,8 @@ type EntityResponse = Response ProductResponse "entities"
 type ProductResponse = Response (Map.Map Text Product) "product"
 
 data Product = Product
-    { productId :: Text -- productId
-    , productName :: Text -- name
+    { productId    :: Text -- productId
+    , productName  :: Text -- name
     , productPrice :: HistoryPrice -- price
     , productImage :: Image -- image
     -- , productSize :: Size -- size

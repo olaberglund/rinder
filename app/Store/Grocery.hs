@@ -1,27 +1,27 @@
 module Store.Grocery (Product (..), Grocery (..)) where
 
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Maybe qualified as Maybe
-import Data.Text
-import Data.Text qualified as Text
-import GHC.Generics (Generic)
-import Network.HTTP.Client.TLS qualified as TLS
-import Servant (FromHttpApiData)
-import Servant.Client qualified as Client
-import Servant.Client.Core qualified as Core
-import Store.Ica.Client qualified as IcaClient
-import Store.Ica.Response qualified as Ica
-import Store.Willys.Client qualified as WillysClient
-import Store.Willys.Response qualified as Willys
-import Web.Internal.HttpApiData (parseQueryParam)
+import           Data.Aeson               (FromJSON, ToJSON)
+import qualified Data.Maybe               as Maybe
+import           Data.Text
+import qualified Data.Text                as Text
+import           GHC.Generics             (Generic)
+import qualified Network.HTTP.Client.TLS  as TLS
+import           Servant                  (FromHttpApiData)
+import qualified Servant.Client           as Client
+import qualified Servant.Client.Core      as Core
+import qualified Store.Ica.Client         as IcaClient
+import qualified Store.Ica.Response       as Ica
+import qualified Store.Willys.Client      as WillysClient
+import qualified Store.Willys.Response    as Willys
+import           Web.Internal.HttpApiData (parseQueryParam)
 
 data Product = Product
-    { productId :: !Text
-    , productName :: !Text
-    , productPrice :: !Text
+    { productId          :: !Text
+    , productName        :: !Text
+    , productPrice       :: !Text
     , productDescription :: !Text
-    , productImageUrl :: !Text
-    , productOffer :: !Text
+    , productImageUrl    :: !Text
+    , productOffer       :: !Text
     }
     deriving stock (Show, Eq, Ord, Generic)
     deriving anyclass (FromJSON, ToJSON)
@@ -34,8 +34,8 @@ data Grocery = Grocery
 
 instance FromHttpApiData Grocery where
     parseQueryParam "willys" = Right willysGrocery
-    parseQueryParam "ica" = Right icaGrocery
-    parseQueryParam _ = Left "Invalid grocery store"
+    parseQueryParam "ica"    = Right icaGrocery
+    parseQueryParam _        = Left "Invalid grocery store"
 
 toProductWillys :: Willys.Product -> Product
 toProductWillys p =

@@ -1,25 +1,18 @@
 module Store.Ica.Api where
 
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Servant (
-    GenericMode (type (:-)),
-    Get,
-    JSON,
-    QueryParam,
-    (:-),
-    (:>),
-    type (:>),
- )
-import Servant.API (Capture)
-import Store.Ica.Response
+import           Data.Text          (Text)
+import           GHC.Generics       (Generic)
+import           Servant            (GenericMode (type (:-)), Get, JSON,
+                                     QueryParam, (:-), (:>))
+import           Servant.API        (Capture)
+import           Store.Ica.Response
 
 {- FOURMOLU_DISABLE -}
 data IcaRootApi as = IcaRootAPI
-    { searchProductsEP 
-        :: !(as 
-        :- "stores" 
-        :> Capture "storeId" Int 
+    { searchProductsEP
+        :: !(as
+        :- "stores"
+        :> Capture "storeId" Int
         :> "api"
         :> "v5"
         :> "products"

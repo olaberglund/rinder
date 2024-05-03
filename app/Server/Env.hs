@@ -9,13 +9,13 @@ to the clients using Server-Sent Events (SSE).
 -}
 module Server.Env (Env (..), newEnv) where
 
-import Control.Concurrent (Chan, newChan)
-import Network.Wai.EventSource (ServerEvent (..))
+import           Control.Concurrent      (Chan, newChan)
+import           Network.Wai.EventSource (ServerEvent (..))
 
 data Env = Env
     { envTransactionsFile :: !FilePath
     , envShoppingListFile :: !FilePath
-    , envBroadcastChan :: !(Chan ServerEvent)
+    , envBroadcastChan    :: !(Chan ServerEvent)
     }
 
 newEnv :: FilePath -> FilePath -> IO Env

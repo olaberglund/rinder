@@ -13,24 +13,25 @@ module Store.Willys.Response (
     PascalToCamel,
 ) where
 
-import Control.Applicative ((<|>))
-import Data.Aeson (FromJSON, ToJSON, (.:))
-import Data.Aeson qualified as Aeson
-import Data.Char qualified as Char
-import Data.Function (on)
-import Data.Maybe (fromMaybe)
-import Data.Maybe qualified as Maybe
-import Data.Ord qualified as Ord
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Deriving.Aeson (CustomJSON, FieldLabelModifier, Rename, StripPrefix)
-import Deriving.Aeson qualified
-import GHC.Generics (Generic)
-import Lucid (ToHtml (..))
-import Safe qualified
+import           Control.Applicative ((<|>))
+import           Data.Aeson          (FromJSON, ToJSON, (.:))
+import qualified Data.Aeson          as Aeson
+import qualified Data.Char           as Char
+import           Data.Function       (on)
+import           Data.Maybe          (fromMaybe)
+import qualified Data.Maybe          as Maybe
+import qualified Data.Ord            as Ord
+import           Data.Text           (Text)
+import qualified Data.Text           as Text
+import           Deriving.Aeson      (CustomJSON, FieldLabelModifier, Rename,
+                                      StripPrefix)
+import qualified Deriving.Aeson
+import           GHC.Generics        (Generic)
+import           Lucid               (ToHtml (..))
+import qualified Safe
 
 data Response a = Response
-    { responseResults :: !(Maybe [a])
+    { responseResults    :: !(Maybe [a])
     , responsePagination :: !Pagination
     }
     deriving stock (Generic, Show)
@@ -52,7 +53,7 @@ instance Deriving.Aeson.StringModifier PascalToCamel where
       where
         lowerCaseFirst :: String -> String
         lowerCaseFirst (c : cs) = Char.toLower c : cs
-        lowerCaseFirst s = s
+        lowerCaseFirst s        = s
 
 newtype Pagination = Pagination {unPagination :: Int}
     deriving stock (Generic, Show)
@@ -83,9 +84,9 @@ instance Aeson.FromJSON Promotion where
                 )
 
 data Product = Product
-    { productName :: !Text
-    , productImage :: !ImageUrl
-    , productPrice :: !(Maybe Text)
+    { productName                :: !Text
+    , productImage               :: !ImageUrl
+    , productPrice               :: !(Maybe Text)
     , productPotentialPromotions :: ![PotentialPromotion]
     }
     deriving stock (Generic, Show)

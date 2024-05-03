@@ -18,24 +18,24 @@ module Split (
     toExpense,
 ) where
 
-import Control.Arrow qualified as Arrow
-import Control.Monad ((>=>))
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Bifunctor (bimap)
-import Data.Coerce (coerce)
-import Data.Function (on)
-import Data.List qualified as List
-import Data.Map qualified as Map
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.Time qualified as Time
-import Data.UUID (UUID)
-import GHC.Generics (Generic)
-import Safe qualified as Safe
-import Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
+import qualified Control.Arrow      as Arrow
+import           Control.Monad      ((>=>))
+import           Data.Aeson         (FromJSON, ToJSON)
+import           Data.Bifunctor     (bimap)
+import           Data.Coerce        (coerce)
+import           Data.Function      (on)
+import qualified Data.List          as List
+import qualified Data.Map           as Map
+import           Data.Text          (Text)
+import qualified Data.Text          as Text
+import qualified Data.Time          as Time
+import           Data.UUID          (UUID)
+import           GHC.Generics       (Generic)
+import qualified Safe               as Safe
+import           Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
 data Person = Person
-    { personName :: !Text
+    { personName  :: !Text
     , personColor :: !Text
     }
     deriving stock (Generic, Ord, Eq, Show)
@@ -132,12 +132,12 @@ data Transaction
     deriving anyclass (FromJSON, ToJSON)
 
 data Expense = Expense
-    { expenseSplit :: !Split
-    , expenseTotal :: !Amount
+    { expenseSplit  :: !Split
+    , expenseTotal  :: !Amount
     , expensePaidBy :: !Person
     , expenseRubric :: !Text
-    , expenseId :: !UUID
-    , expenseDate :: !Time.LocalTime
+    , expenseId     :: !UUID
+    , expenseDate   :: !Time.LocalTime
     }
     deriving stock (Generic, Show)
     deriving anyclass (FromJSON, ToJSON)
@@ -149,23 +149,23 @@ instance Eq Expense where
 an amount of money to presumably settle a debt.
 -}
 data Settlement = Settlement
-    { settlementFrom :: !Person
-    , settlementTo :: !Person
+    { settlementFrom   :: !Person
+    , settlementTo     :: !Person
     , settlementAmount :: !Amount
-    , settlementDate :: !Time.LocalTime
+    , settlementDate   :: !Time.LocalTime
     }
     deriving stock (Generic, Show, Eq)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | the current implementation of the expense form
 data ExpenseForm = ExpenseForm
-    { efDebtor :: !Person
-    , efPaidBy :: !Person
-    , efSplit :: !Split
+    { efDebtor    :: !Person
+    , efPaidBy    :: !Person
+    , efSplit     :: !Split
     , efShareType :: !ShareType
-    , efAmount :: !Float
-    , efRubric :: !Text
-    , efTotal :: !Amount
+    , efAmount    :: !Float
+    , efRubric    :: !Text
+    , efTotal     :: !Amount
     }
     deriving stock (Show, Eq)
 
@@ -238,9 +238,9 @@ data ShareType
     deriving anyclass (FromJSON, ToJSON)
 
 data Share = Share
-    { shareType :: !ShareType
-    , sharePerson :: !Person
-    , shareAmount :: !Amount
+    { shareType    :: !ShareType
+    , sharePerson  :: !Person
+    , shareAmount  :: !Amount
     , shareEntered :: !Bool
     }
     deriving stock (Eq, Generic, Show)
@@ -260,8 +260,8 @@ data Split = Split
     deriving anyclass (FromJSON, ToJSON)
 
 data IOU = IOU
-    { iouFrom :: !Person
-    , iouTo :: !Person
+    { iouFrom   :: !Person
+    , iouTo     :: !Person
     , iouAmount :: !Amount
     }
     deriving stock (Show, Eq)
@@ -287,7 +287,7 @@ formatDate = Text.pack . Time.formatTime Time.defaultTimeLocale "%F - %R"
 
 debtAmount :: Amount -> Share -> Amount
 debtAmount total (Share Percentage _ p _) = (p * total) / 100
-debtAmount _ (Share Fixed _ a _) = a
+debtAmount _ (Share Fixed _ a _)          = a
 
 iousToMap :: [IOU] -> DebtMap
 iousToMap = List.foldl' accumDebts Map.empty
@@ -363,8 +363,8 @@ findExpense i = List.find isExpense >=> getExpense
   where
     isExpense :: Transaction -> Bool
     isExpense (ExpenseTransaction e) = i == expenseId e
-    isExpense _ = False
+    isExpense _                      = False
 
     getExpense :: Transaction -> Maybe Expense
     getExpense (ExpenseTransaction e) = Just e
-    getExpense _ = Nothing
+    getExpense _                      = Nothing

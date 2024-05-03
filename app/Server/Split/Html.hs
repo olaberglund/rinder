@@ -7,19 +7,19 @@ module Server.Split.Html (
 )
 where
 
-import Data.Coerce (coerce)
-import Data.List qualified as List
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Inter.Language (Language, mkHref)
-import Inter.Lexicon (l, l_)
-import Inter.Lexicon qualified as Lexicon
-import Lucid
-import Lucid.Htmx qualified as HX
-import Numeric (showFFloat)
-import Safe (headMay)
-import Server.Utils.Html (baseTemplate, text)
-import Split
+import           Data.Coerce       (coerce)
+import qualified Data.List         as List
+import           Data.Text         (Text)
+import qualified Data.Text         as Text
+import           Inter.Language    (Language, mkHref)
+import           Inter.Lexicon     (l, l_)
+import qualified Inter.Lexicon     as Lexicon
+import           Lucid
+import qualified Lucid.Htmx        as HX
+import           Numeric           (showFFloat)
+import           Safe              (headMay)
+import           Server.Utils.Html (baseTemplate, text)
+import           Split
 
 data Feedback = Success | Failure
     deriving stock (Show, Eq)
@@ -277,12 +277,12 @@ instance ToHtml EditExpensePage where
 -- | Convert a share type to text. Useful for use in name attributes in forms.
 shareTypeToText :: ShareType -> Text
 shareTypeToText Percentage = "percentage"
-shareTypeToText Fixed = "fixed"
+shareTypeToText Fixed      = "fixed"
 
 -- | Symbol for share type. Useful for displaying the share type in the UI.
 shareTypeSymbol :: Language -> ShareType -> Text
 shareTypeSymbol _ Percentage = "%"
-shareTypeSymbol lang Fixed = l lang Lexicon.Currency
+shareTypeSymbol lang Fixed   = l lang Lexicon.Currency
 
 data TransactionHtml = TransactionHtml !Language !Transaction
 

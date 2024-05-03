@@ -10,51 +10,39 @@ module Server.Shopping.Handler (
     reorderItemH,
 ) where
 
-import Control.Concurrent (Chan, dupChan, readChan, writeChan)
-import Control.Monad (void, when)
-import Control.Monad.IO.Class (liftIO)
-import Control.Newtype.Generics (Newtype, over)
-import Data.Aeson (
-    FromJSON (..),
-    ToJSON,
-    eitherDecode,
-    eitherDecodeStrict,
-    encode,
- )
-import Data.Binary.Builder qualified as Builder
-import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as LBS
-import Data.Either qualified as Either
-import Data.Map qualified as Map
-import Data.Maybe qualified as Maybe
-import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8)
-import GHC.Generics (Generic)
-import Inter.Language (Language)
-import Inter.Lexicon (l)
-import Inter.Lexicon qualified as Lexicon
-import Lucid (Attribute, ToHtml (toHtml), renderBS)
-import Network.Wai.EventSource (ServerEvent (..))
-import Servant (
-    Handler,
-    NoContent (..),
- )
-import Servant.API.EventStream (EventSource)
-import Servant.Types.SourceT qualified as S
-import Server.Env (Env (envBroadcastChan, envShoppingListFile))
-import Server.Shopping.Html (
-    Checkbox (..),
-    Direction (..),
-    Note (noteContent, noteId),
-    ProductSearchList (..),
-    Reordering (..),
-    Search (unSearch),
-    ShoppingItem (..),
-    ShoppingItems (..),
-    ShoppingPage (..),
- )
-import Store.Grocery
-import System.Timeout qualified
+import           Control.Concurrent       (Chan, dupChan, readChan, writeChan)
+import           Control.Monad            (void, when)
+import           Control.Monad.IO.Class   (liftIO)
+import           Control.Newtype.Generics (Newtype, over)
+import           Data.Aeson               (FromJSON (..), ToJSON, eitherDecode,
+                                           eitherDecodeStrict, encode)
+import qualified Data.Binary.Builder      as Builder
+import qualified Data.ByteString          as BS
+import qualified Data.ByteString.Lazy     as LBS
+import qualified Data.Either              as Either
+import qualified Data.Map                 as Map
+import qualified Data.Maybe               as Maybe
+import           Data.Text                (Text)
+import           Data.Text.Encoding       (encodeUtf8)
+import           GHC.Generics             (Generic)
+import           Inter.Language           (Language)
+import           Inter.Lexicon            (l)
+import qualified Inter.Lexicon            as Lexicon
+import           Lucid                    (Attribute, ToHtml (toHtml), renderBS)
+import           Network.Wai.EventSource  (ServerEvent (..))
+import           Servant                  (Handler, NoContent (..))
+import           Servant.API.EventStream  (EventSource)
+import qualified Servant.Types.SourceT    as S
+import           Server.Env               (Env (envBroadcastChan, envShoppingListFile))
+import           Server.Shopping.Html     (Checkbox (..), Direction (..),
+                                           Note (noteContent, noteId),
+                                           ProductSearchList (..),
+                                           Reordering (..), Search (unSearch),
+                                           ShoppingItem (..),
+                                           ShoppingItems (..),
+                                           ShoppingPage (..))
+import           Store.Grocery
+import qualified System.Timeout
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
@@ -65,14 +53,14 @@ sseH env = liftIO $ do
     rest chan = S.Effect $ do
         msg <- System.Timeout.timeout (15 * 1000000) (readChan chan)
         return $ case msg of
-            Just m -> S.Yield m (rest chan)
+            Just m  -> S.Yield m (rest chan)
             Nothing -> S.Yield keepAlive (rest chan)
 
     keepAlive :: ServerEvent
     keepAlive = CommentEvent (Builder.fromByteString "keep-alive")
 
 toggle :: Checkbox -> Checkbox
-toggle Checked = Unchecked
+toggle Checked   = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Env -> Language -> Grocery -> Handler NoContent
@@ -199,7 +187,7 @@ addProductH env lang grocery product' = liftIO $ do
         Right ps ->
             case listOfGrocery grocery ps of
                 Just items -> updateList ps items
-                Nothing -> pure ()
+                Nothing    -> pure ()
         Left err -> print err
     return NoContent
   where

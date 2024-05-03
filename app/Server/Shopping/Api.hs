@@ -1,30 +1,16 @@
 module Server.Shopping.Api (ShoppingApi (..)) where
 
-import GHC.Generics (Generic)
-import Servant (
-    Delete,
-    FormUrlEncoded,
-    GenericMode (type (:-)),
-    Get,
-    JSON,
-    NoContent (..),
-    NoFraming,
-    Post,
-    ReqBody,
-    StreamGet,
-    type (:>),
- )
-import Servant.API (Patch)
-import Servant.API.EventStream (EventSource, EventStream)
-import Servant.HTML.Lucid (HTML)
-import Server.Shopping.Html (
-    Note,
-    ProductSearchList,
-    Reordering,
-    Search,
-    ShoppingPage,
- )
-import Store.Grocery qualified as Grocery
+import           GHC.Generics            (Generic)
+import           Servant                 (Delete, FormUrlEncoded,
+                                          GenericMode (type (:-)), Get, JSON,
+                                          NoContent (..), NoFraming, Post,
+                                          ReqBody, StreamGet, type (:>))
+import           Servant.API             (Patch)
+import           Servant.API.EventStream (EventSource, EventStream)
+import           Servant.HTML.Lucid      (HTML)
+import           Server.Shopping.Html    (Note, ProductSearchList, Reordering,
+                                          Search, ShoppingPage)
+import qualified Store.Grocery           as Grocery
 
 data ShoppingApi as = ShoppingApi
     { saPageEP :: !(as :- Get '[HTML] ShoppingPage)

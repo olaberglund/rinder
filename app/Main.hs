@@ -1,11 +1,11 @@
 module Main (main) where
 
 -- import Lexicon qualified
-import Network.Wai.Handler.Warp (run)
-import Safe (readMay)
-import Server.App (app)
-import Server.Env (newEnv)
-import System.Environment (getArgs)
+import           Network.Wai.Handler.Warp (run)
+import           Safe                     (readMay)
+import           Server.App               (app)
+import           Server.Env               (newEnv)
+import           System.Environment       (getArgs)
 
 main :: IO ()
 main =

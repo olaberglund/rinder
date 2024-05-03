@@ -1,22 +1,14 @@
 module Server.Split.Api (SplitApi (..)) where
 
-import Data.UUID (UUID)
-import GHC.Generics (Generic)
-import Servant (
-    Capture,
-    Delete,
-    FormUrlEncoded,
-    GenericMode (type (:-)),
-    Get,
-    NoContent (..),
-    Patch,
-    Post,
-    ReqBody,
-    type (:>),
- )
-import Servant.HTML.Lucid (HTML)
-import Server.Split.Html
-import Split (ExpenseForm)
+import           Data.UUID          (UUID)
+import           GHC.Generics       (Generic)
+import           Servant            (Capture, Delete, FormUrlEncoded,
+                                     GenericMode (type (:-)), Get,
+                                     NoContent (..), Patch, Post, ReqBody,
+                                     type (:>))
+import           Servant.HTML.Lucid (HTML)
+import           Server.Split.Html
+import           Split              (ExpenseForm)
 
 data SplitApi as = SplitApi
     { splitPageEP :: !(as :- Get '[HTML] SplitPage)

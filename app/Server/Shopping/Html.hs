@@ -12,29 +12,25 @@ module Server.Shopping.Html (
 )
 where
 
-import Data.Aeson (
-    FromJSON (..),
-    ToJSON,
-    encode,
- )
-import Data.Aeson.Text (encodeToLazyText)
-import Data.ByteString (toStrict)
-import Data.Coerce (coerce)
-import Data.Text (Text)
-import Data.Text.Encoding qualified as TE
-import Data.Text.Lazy qualified as TL
-import Deriving.Aeson (CustomJSON (..))
-import GHC.Generics (Generic)
-import Inter.Language (Language, mkHref)
-import Inter.Lexicon (l, l_)
-import Inter.Lexicon qualified as Lexicon
-import Lucid
-import Lucid.Base qualified
-import Lucid.Htmx qualified as HX
-import Server.Utils.Html (baseTemplate)
-import Store.Grocery
-import Store.Willys.Response (StripAndLower)
-import Web.FormUrlEncoded (FromForm, fromForm, parseUnique)
+import           Data.Aeson            (FromJSON (..), ToJSON, encode)
+import           Data.Aeson.Text       (encodeToLazyText)
+import           Data.ByteString       (toStrict)
+import           Data.Coerce           (coerce)
+import           Data.Text             (Text)
+import qualified Data.Text.Encoding    as TE
+import qualified Data.Text.Lazy        as TL
+import           Deriving.Aeson        (CustomJSON (..))
+import           GHC.Generics          (Generic)
+import           Inter.Language        (Language, mkHref)
+import           Inter.Lexicon         (l, l_)
+import qualified Inter.Lexicon         as Lexicon
+import           Lucid
+import qualified Lucid.Base
+import qualified Lucid.Htmx            as HX
+import           Server.Utils.Html     (baseTemplate)
+import           Store.Grocery
+import           Store.Willys.Response (StripAndLower)
+import           Web.FormUrlEncoded    (FromForm, fromForm, parseUnique)
 
 newtype Search = Search {unSearch :: Text}
     deriving stock (Generic, Show)
@@ -42,7 +38,7 @@ newtype Search = Search {unSearch :: Text}
 
 data Note = Note
     { noteContent :: Text
-    , noteId :: Text
+    , noteId      :: Text
     }
     deriving stock (Generic, Show, Eq)
     deriving anyclass (FromForm)
@@ -110,12 +106,11 @@ addToShoppingList lang grocery p =
     , HX.hxSwap_ "none"
     ]
 
-data ShoppingPage
-    = ShoppingPage
-    { spLanguage :: !Language
-    , spProducts :: ![Product]
-    , spGrocery :: !Text
-    , spPromotions :: ![Product]
+data ShoppingPage = ShoppingPage
+    { spLanguage     :: !Language
+    , spProducts     :: ![Product]
+    , spGrocery      :: !Text
+    , spPromotions   :: ![Product]
     , spShoppingList :: !(Maybe [ShoppingItem])
     }
     deriving stock (Show, Eq)
@@ -195,8 +190,8 @@ data Checkbox = Checked | Unchecked
 
 data ShoppingItem = ShoppingItem
     { siProduct :: !Product
-    , siCheck :: !Checkbox
-    , siNote :: !Text
+    , siCheck   :: !Checkbox
+    , siNote    :: !Text
     }
     deriving stock (Generic, Show, Eq)
     deriving (FromJSON, ToJSON) via StripAndLower "si" ShoppingItem

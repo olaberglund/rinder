@@ -1,12 +1,12 @@
 module Server.Utils.Html (baseTemplate, text, baseTemplate', navbar_, Page404 (..)) where
 
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Inter.Language (Language, flag, mkHref, toHref)
-import Inter.Lexicon (l_)
-import Inter.Lexicon qualified as Lexicon
-import Lucid
-import Lucid.Htmx qualified as HX
+import           Data.Text      (Text)
+import qualified Data.Text      as Text
+import           Inter.Language (Language, flag, mkHref, toHref)
+import           Inter.Lexicon  (l_)
+import qualified Inter.Lexicon  as Lexicon
+import           Lucid
+import qualified Lucid.Htmx     as HX
 
 -- | helper function to convert a Showable to a Text
 text :: (Show a) => a -> Text

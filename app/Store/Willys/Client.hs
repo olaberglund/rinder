@@ -3,16 +3,13 @@ module Store.Willys.Client (
     searchProduct,
 ) where
 
-import Data.Maybe qualified as Maybe
-import Data.Text (Text)
-import Servant (
-    NamedRoutes,
-    Proxy (Proxy),
- )
-import Servant.Client ((//), (/:))
-import Servant.Client qualified as Client
-import Store.Willys.Api (WillysRootApi (..))
-import Store.Willys.Response (Product, Promotion, responseResults)
+import qualified Data.Maybe            as Maybe
+import           Data.Text             (Text)
+import           Servant               (NamedRoutes, Proxy (Proxy))
+import           Servant.Client        ((//), (/:))
+import qualified Servant.Client        as Client
+import           Store.Willys.Api      (WillysRootApi (..))
+import           Store.Willys.Response (Product, Promotion, responseResults)
 
 apiClient :: WillysRootApi (Client.AsClientT Client.ClientM)
 apiClient = Client.client (Proxy @(NamedRoutes WillysRootApi))
