@@ -10,7 +10,7 @@ module Server.Shopping.Handler (
     reorderItemH,
 ) where
 
-import           Control.Concurrent       (Chan, dupChan, readChan, writeChan)
+import           Control.Concurrent       (Chan, readChan, writeChan)
 import           Control.Monad            (void, when)
 import           Control.Monad.IO.Class   (liftIO)
 import           Control.Newtype.Generics (Newtype, over)
@@ -33,7 +33,7 @@ import           Network.Wai.EventSource  (ServerEvent (..))
 import           Servant                  (Handler, NoContent (..))
 import           Servant.API.EventStream  (EventSource)
 import qualified Servant.Types.SourceT    as S
-import           Server.Env               (Env (envBroadcastChan, envShoppingListFile))
+import           Server.Env               (Env (envShoppingListFile, keepAliveChan))
 import           Server.Shopping.Html     (Checkbox (..), Direction (..),
                                            Note (noteContent, noteId),
                                            ProductSearchList (..),
@@ -45,13 +45,11 @@ import           Store.Grocery
 import qualified System.Timeout
 
 sseH :: Env -> Handler EventSource
-sseH env = liftIO $ do
-    chan <- dupChan (envBroadcastChan env)
-    return $ S.fromStepT (S.Yield keepAlive (rest chan))
+sseH env = return $ S.fromStepT (S.Yield keepAlive (rest (keepAliveChan env)))
   where
     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
     rest chan = S.Effect $ do
-        msg <- System.Timeout.timeout (15 * 1000000) (readChan chan)
+        msg <- System.Timeout.timeout (15 * 1_000_000) (readChan chan)
         return $ case msg of
             Just m  -> S.Yield m (rest chan)
             Nothing -> S.Yield keepAlive (rest chan)
@@ -260,7 +258,7 @@ updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO ()
 updateAndBroadCast env lang grocery items =
     LBS.writeFile (envShoppingListFile env) (encode items)
         >> writeChan
-            (envBroadcastChan env)
+            (keepAliveChan env)
             ( asServerEvent
                 (Just (groceryName grocery))
                 [ ShoppingItems

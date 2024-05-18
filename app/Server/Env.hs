@@ -15,7 +15,7 @@ import           Network.Wai.EventSource (ServerEvent (..))
 data Env = Env
     { envTransactionsFile :: !FilePath
     , envShoppingListFile :: !FilePath
-    , envBroadcastChan    :: !(Chan ServerEvent)
+    , keepAliveChan       :: !(Chan ServerEvent)
     }
 
 newEnv :: FilePath -> FilePath -> IO Env
