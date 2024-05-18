@@ -1,4 +1,5 @@
-cabal-version:      3.0
+cabal-version:   3.0
+
 -- The cabal-version field refers to the version of the .cabal specification,
 -- and can be different from the cabal-install (the tool) version and the
 -- Cabal (the library) version you are using. As such, the Cabal (the library)
@@ -11,7 +12,7 @@ cabal-version:      3.0
 --   http://haskell.org/cabal/users-guide/
 --
 -- The name of the package.
-name:               rinder
+name:            rinder
 
 -- The package version.
 -- See the Haskell package versioning policy (PVP) for standards
@@ -20,7 +21,7 @@ name:               rinder
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:         0.1.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -29,114 +30,109 @@ version:            0.1.0.0
 -- description:
 
 -- The license under which the package is released.
-license:            NONE
+license:
 
 -- The package author(s).
-author:             Ola Berglund
+author:          Ola Berglund
 
 -- An email address to which users can send suggestions, bug reports, and patches.
-maintainer:         olakjberglund@gmail.com
+maintainer:      olakjberglund@gmail.com
 
 -- A copyright notice.
 -- copyright:
-build-type:         Simple
+build-type:      Simple
 
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
-extra-doc-files:    CHANGELOG.md
+extra-doc-files: CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
-                 -Werror=missing-deriving-strategies 
-                 -Wmissing-export-lists 
-                 -Wmissing-signatures
+  ghc-options:
+    -Wall -Werror=missing-deriving-strategies -Wmissing-export-lists
+    -Wmissing-signatures
 
 executable rinder
-    -- Import common warning flags.
-    import:           warnings
+  -- Import common warning flags.
+  import:             warnings
 
-    -- .hs or .lhs file containing the Main module.
-    main-is:          Main.hs
+  -- .hs or .lhs file containing the Main module.
+  main-is:            Main.hs
 
-    -- Modules included in this executable, other than Main.
-    other-modules: Split
-                 , Server.Shopping.Html
-                 , Server.Shopping.Api
-                 , Server.Shopping.Handler 
+  -- Modules included in this executable, other than Main.
+  other-modules:
+    Inter.Language
+    Inter.Lexicon
+    Server.Api
+    Server.App
+    Server.Env
+    Server.Shopping.Api
+    Server.Shopping.Handler
+    Server.Shopping.Html
+    Server.Split.Api
+    Server.Split.Handler
+    Server.Split.Html
+    Server.Utils.Handler
+    Server.Utils.Html
+    Split
+    Store.Grocery
+    Store.Ica.Api
+    Store.Ica.Client
+    Store.Ica.Response
+    Store.Willys.Api
+    Store.Willys.Client
+    Store.Willys.Response
 
-                 , Server.Split.Html
-                 , Server.Split.Api
-                 , Server.Split.Handler 
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    DerivingVia
+    DuplicateRecordFields
+    LambdaCase
+    OverloadedStrings
+    ScopedTypeVariables
+    TypeApplications
+    TypeOperators
 
-                 , Server.Utils.Html
-                 , Server.Utils.Handler
+  -- Other library packages from which modules are imported.
+  build-depends:
+    , aeson
+    , aeson-pretty
+    , async
+    , base                  ^>=4.17.2.1
+    , binary
+    , bytestring
+    , containers
+    , deriving-aeson
+    , http-api-data
+    , http-client
+    , http-client-tls
+    , http-types
+    , lucid
+    , lucid-htmx
+    , newtype-generics
+    , safe
+    , servant
+    , servant-client
+    , servant-client-core
+    , servant-event-stream
+    , servant-lucid
+    , servant-server
+    , text
+    , time
+    , uuid
+    , wai-extra
+    , warp
 
-                 , Server.Api
-                 , Server.App
-                 , Server.Env
+  ghc-options:        -threaded
 
-                 , Store.Willys.Api
-                 , Store.Willys.Client
-                 , Store.Willys.Response
-                 , Store.Grocery
+  -- Directories containing source files.
+  hs-source-dirs:     app
 
-                 , Store.Ica.Api
-                 , Store.Ica.Client
-                 , Store.Ica.Response
-
-                 , Inter.Language
-                 , Inter.Lexicon
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    default-extensions: OverloadedStrings
-                    ,   DataKinds
-                    ,   TypeOperators
-                    ,   DeriveGeneric
-                    ,   TypeApplications
-                    ,   LambdaCase
-                    ,   ScopedTypeVariables
-                    ,   DerivingStrategies
-                    ,   DerivingVia
-                    ,   DeriveAnyClass
-                    ,   DuplicateRecordFields
-
-
-    -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1,
-                      warp,
-                      async,
-                      text,
-                      aeson,
-                      aeson-pretty,
-                      bytestring,
-                      containers,
-                      servant-server,
-                      servant-client,
-                      servant-client-core,
-                      servant-lucid,
-                      lucid,
-                      lucid-htmx,
-                      http-client,
-                      http-client-tls,
-                      http-api-data,
-                      http-types,
-                      wai-extra,
-                      binary,
-                      servant-event-stream,
-                      servant,
-                      time,
-                      uuid,
-                      safe,
-                      deriving-aeson,
-                      newtype-generics
-
-    ghc-options: -threaded 
-
-    -- Directories containing source files.
-    hs-source-dirs:   app
-
-    -- Base language which the package is written in.
-    default-language: GHC2021
+  -- Base language which the package is written in.
+  default-language:   GHC2021
