@@ -10,7 +10,7 @@ module Server.Shopping.Handler (
     reorderItemH,
 ) where
 
-import           Control.Concurrent       (Chan, readChan, writeChan)
+import           Control.Concurrent       (Chan, dupChan, readChan, writeChan)
 import           Control.Monad            (void, when)
 import           Control.Monad.IO.Class   (liftIO)
 import           Control.Newtype.Generics (Newtype, over)
@@ -45,7 +45,9 @@ import           Store.Grocery
 import qualified System.Timeout
 
 sseH :: Env -> Handler EventSource
-sseH env = return $ S.fromStepT (S.Yield keepAlive (rest (keepAliveChan env)))
+sseH env = liftIO $ do
+    chan <- dupChan $ keepAliveChan env
+    return $ S.fromStepT (S.Yield keepAlive (rest chan))
   where
     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
     rest chan = S.Effect $ do
