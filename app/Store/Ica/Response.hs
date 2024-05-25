@@ -1,5 +1,19 @@
 -- | Encoding the API documented here: https://github.com/svendahlstrand/ica-api/blob/master/api-referens.md
-module Store.Ica.Response where
+module Store.Ica.Response (
+    EntityResponse,
+    Product,
+    unResponse,
+    productId,
+    productName,
+    unPrice,
+    historyPriceCurrent,
+    productPrice,
+    unImage,
+    productImage,
+    ItemResponse,
+    OfferResponse,
+    Response,
+) where
 
 import           Data.Aeson            (FromJSON, ToJSON)
 import qualified Data.Map              as Map

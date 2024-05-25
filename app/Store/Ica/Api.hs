@@ -1,11 +1,11 @@
-module Store.Ica.Api where
+module Store.Ica.Api (IcaRootApi, searchProductsEP) where
 
 import           Data.Text          (Text)
 import           GHC.Generics       (Generic)
 import           Servant            (GenericMode (type (:-)), Get, JSON,
                                      QueryParam, (:-), (:>))
 import           Servant.API        (Capture)
-import           Store.Ica.Response
+import           Store.Ica.Response (EntityResponse)
 
 {- FOURMOLU_DISABLE -}
 data IcaRootApi as = IcaRootAPI

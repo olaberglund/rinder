@@ -1,12 +1,12 @@
-module Store.Ica.Client where
+module Store.Ica.Client (searchProduct) where
 
 import qualified Data.Map           as Map
 import           Data.Text
 import           Servant            (NamedRoutes, Proxy (Proxy))
 import           Servant.Client     ((//), (/:))
 import qualified Servant.Client     as Client
-import           Store.Ica.Api
-import           Store.Ica.Response
+import           Store.Ica.Api      (IcaRootApi (..))
+import           Store.Ica.Response (Product, Response (unResponse))
 
 apiClient :: IcaRootApi (Client.AsClientT Client.ClientM)
 apiClient = Client.client (Proxy @(NamedRoutes IcaRootApi))
