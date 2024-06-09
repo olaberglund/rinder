@@ -97,3 +97,4 @@ result
 dev-transactions.json
 transactions.json
 shopping-list.json
+.direnv
