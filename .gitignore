@@ -93,3 +93,7 @@ scripts/release/binary-downloads/
 
 static/images/products
 config.txt
+result
+dev-transactions.json
+transactions.json
+shopping-list.json

@@ -104,7 +104,7 @@ executable rinder
     , aeson
     , aeson-pretty
     , async
-    , base                  ^>=4.17.2.1
+    , base
     , binary
     , bytestring
     , containers
