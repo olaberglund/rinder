@@ -114,7 +114,6 @@ executable rinder
     , http-client-tls
     , http-types
     , lucid
-    , lucid-htmx
     , newtype-generics
     , safe
     , servant

@@ -26,7 +26,6 @@ import           Inter.Lexicon         (l, l_)
 import qualified Inter.Lexicon         as Lexicon
 import           Lucid
 import qualified Lucid.Base
-import qualified Lucid.Htmx            as HX
 import           Server.Utils.Html     (baseTemplate)
 import           Store.Grocery
 import           Store.Willys.Response (StripAndLower)
@@ -100,10 +99,10 @@ instance ToHtml ProductSearchList where
 
 addToShoppingList :: Language -> Text -> Product -> [Attribute]
 addToShoppingList lang grocery p =
-    [ HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/lagg-till")
-    , HX.hxExt_ "json-enc"
-    , HX.hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)
-    , HX.hxSwap_ "none"
+    [ hxPost_ (mkHref lang "/inkop/" <> grocery <> "/lagg-till")
+    , hxExt_ "json-enc"
+    , hxVals_ (TE.decodeUtf8 $ toStrict $ encode p)
+    , hxSwap_ "none"
     ]
 
 data ShoppingPage = ShoppingPage
@@ -120,8 +119,8 @@ instance ToHtml ShoppingPage where
         h1_ [class_ "shopping-page-title"] $ do
             l_ lang Lexicon.WeeksShoppingList
             div_ $ do
-                a_ ([href_ $ mkHref lang "/inkop/willys"] <> if grocery == "willys" then [class_ "link-active"] else []) "Willys" <> " "
-                a_ ([href_ $ mkHref lang "/inkop/ica"] <> if grocery == "ica" then [class_ "link-active"] else []) "Ica"
+                a_ ([href_ $ mkHref lang "/inkop/willys"] <> [class_ "link-active" | grocery == "willys"]) "Willys" <> " "
+                a_ ([href_ $ mkHref lang "/inkop/ica"] <> [class_ "link-active" | grocery == "ica"]) "Ica"
         div_ [class_ "sticky-tabs"] $ do
             div_ [class_ "tabs"] $ do
                 button_
@@ -161,15 +160,15 @@ instance ToHtml ShoppingPage where
                 button_
                     [ class_ "remove-all-button"
                     , type_ "button"
-                    , HX.hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort-alla"
-                    , HX.hxSwap_ "none"
+                    , hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort-alla"
+                    , hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveAll)
                 button_
                     [ class_ "remove-checked-button"
                     , type_ "button"
-                    , HX.hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort"
-                    , HX.hxSwap_ "none"
+                    , hxDelete_ $ mkHref lang "/inkop/" <> grocery <> "/ta-bort"
+                    , hxSwap_ "none"
                     ]
                     (l_ lang Lexicon.RemoveMarked)
             case shoppingList of
@@ -177,7 +176,7 @@ instance ToHtml ShoppingPage where
                 Just list -> do
                     div_
                         [ id_ "shopping-list"
-                        , HX.hxExt_ "sse"
+                        , hxExt_ "sse"
                         , hxSseConnect_ (mkHref lang "/inkop/" <> grocery <> "/sse")
                         , hxSseSwap_ grocery
                         ]
@@ -215,16 +214,16 @@ shoppingItem_ lang grocery item = div_ [class_ "shopping-item-container", id_ di
         div_ [class_ "shopping-item-reorder-container"] $ do
             button_
                 [ class_ "reorder-button"
-                , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
-                , HX.hxExt_ "json-enc"
-                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Up))
+                , hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
+                , hxExt_ "json-enc"
+                , hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Up))
                 ]
                 "⬆️"
             button_
                 [ class_ "reorder-button"
-                , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
-                , HX.hxExt_ "json-enc"
-                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Down))
+                , hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/flytta")
+                , hxExt_ "json-enc"
+                , hxVals_ (TL.toStrict $ encodeToLazyText (Reordering (productId (siProduct item)) Down))
                 ]
                 "⬇️"
         img_ [class_ "item-image", src_ (productImageUrl (siProduct item))]
@@ -240,26 +239,26 @@ shoppingItem_ lang grocery item = div_ [class_ "shopping-item-container", id_ di
                 , type_ "checkbox"
                 , id_ (productId (siProduct item))
                 , name_ "name"
-                , HX.hxPost_ (mkHref lang "/inkop/" <> grocery <> "/toggla")
-                , HX.hxExt_ "json-enc"
-                , HX.hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
+                , hxPost_ (mkHref lang "/inkop/" <> grocery <> "/toggla")
+                , hxExt_ "json-enc"
+                , hxVals_ (TL.toStrict $ encodeToLazyText (siProduct item))
                 , autocomplete_ "off"
                 ]
-                    <> if (siCheck item) == Checked then [checked_] else []
+                    <> [checked_ | siCheck item == Checked]
     form_ [class_ "shopping-item-note-container", autocomplete_ "off"] $ do
         input_
             [ class_ "item-note"
             , type_ "text"
             , name_ "noteContent"
             , value_ (siNote item)
-            , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
+            , hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
             , placeholder_ (l lang Lexicon.Note)
             ]
         input_ [type_ "hidden", name_ "noteId", value_ (productId (siProduct item))]
         button_
             [ type_ "submit"
-            , HX.hxSwap_ "none"
-            , HX.hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
+            , hxSwap_ "none"
+            , hxPatch_ (mkHref lang "/inkop/" <> grocery <> "/anteckna")
             ]
             (l_ lang Lexicon.Save)
   where
@@ -289,10 +288,10 @@ productSearch_ lang attributes posturl products = do
         button_
             [ id_ "search-button"
             , type_ "button"
-            , HX.hxPost_ posturl
-            , HX.hxTarget_ ("#" <> listId)
-            , HX.hxSwap_ "outerHTML"
-            , HX.hxParams_ "query"
+            , hxPost_ posturl
+            , hxTarget_ ("#" <> listId)
+            , hxSwap_ "outerHTML"
+            , hxParams_ "query"
             ]
             (l_ lang Lexicon.Show)
     toHtml (ProductSearchList lang attributes products (l lang Lexicon.SearchResults) listId)
@@ -306,3 +305,27 @@ hxSseConnect_ = Lucid.Base.makeAttribute "sse-connect"
 -- | Attribute for specifying the name of the message to swap into the DOM
 hxSseSwap_ :: Text -> Attribute
 hxSseSwap_ = Lucid.Base.makeAttribute "sse-swap"
+
+hxExt_ :: Text -> Attribute
+hxExt_ = Lucid.Base.makeAttribute "hx-ext"
+
+hxSwap_ :: Text -> Attribute
+hxSwap_ = Lucid.Base.makeAttribute "hx-swap"
+
+hxPatch_ :: Text -> Attribute
+hxPatch_ = Lucid.Base.makeAttribute "hx-patch"
+
+hxPost_ :: Text -> Attribute
+hxPost_ = Lucid.Base.makeAttribute "hx-post"
+
+hxTarget_ :: Text -> Attribute
+hxTarget_ = Lucid.Base.makeAttribute "hx-target"
+
+hxParams_ :: Text -> Attribute
+hxParams_ = Lucid.Base.makeAttribute "hx-params"
+
+hxVals_ :: Text -> Attribute
+hxVals_ = Lucid.Base.makeAttribute "hx-vals"
+
+hxDelete_ :: Text -> Attribute
+hxDelete_ = Lucid.Base.makeAttribute "hx-delete"

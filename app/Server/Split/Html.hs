@@ -15,7 +15,7 @@ import           Inter.Language    (Language, mkHref)
 import           Inter.Lexicon     (l, l_)
 import qualified Inter.Lexicon     as Lexicon
 import           Lucid
-import qualified Lucid.Htmx        as HX
+import qualified Lucid.Base
 import           Numeric           (showFFloat)
 import           Safe              (headMay)
 import           Server.Utils.Html (baseTemplate, text)
@@ -115,9 +115,9 @@ instance ToHtml SplitPage where
                     small_ $ l_ lang Lexicon.RestIsPaidByOther
                     button_
                         [ type_ "submit"
-                        , HX.hxPost_ (mkHref lang "/split/lagg-till")
-                        , HX.hxTarget_ "#tally-expenses-container"
-                        , HX.hxSwap_ "outerHTML"
+                        , hxPost_ (mkHref lang "/split/lagg-till")
+                        , hxTarget_ "#tally-expenses-container"
+                        , hxSwap_ "outerHTML"
                         ]
                         (l_ lang Lexicon.Add)
         toHtml (Transactions lang expenses)
@@ -136,9 +136,9 @@ instance ToHtml Transactions where
                     div_ [class_ "tally-container"] $ mapM_ (iou_ lang) settles
                     button_
                         [ type_ "submit"
-                        , HX.hxPost_ (mkHref lang "/split/gor-upp")
-                        , HX.hxTarget_ "#tally-expenses-container"
-                        , HX.hxSwap_ "outerHTML"
+                        , hxPost_ (mkHref lang "/split/gor-upp")
+                        , hxTarget_ "#tally-expenses-container"
+                        , hxSwap_ "outerHTML"
                         ]
                         (l_ lang Lexicon.Settle)
             h2_ (l_ lang Lexicon.Expenses)
@@ -262,14 +262,14 @@ instance ToHtml EditExpensePage where
                 div_ [id_ "edit-action-buttons"] $ do
                     button_
                         [ type_ "submit"
-                        , HX.hxPatch_ (mkHref lang $ "/split/spara/" <> text (expenseId e))
-                        , HX.hxTarget_ "body"
+                        , hxPatch_ (mkHref lang $ "/split/spara/" <> text (expenseId e))
+                        , hxTarget_ "body"
                         ]
                         (l_ lang Lexicon.Save)
                     button_
                         [ type_ "button"
-                        , HX.hxDelete_ (mkHref lang $ "/split/ta-bort/" <> text (expenseId e))
-                        , HX.hxSwap_ "none"
+                        , hxDelete_ (mkHref lang $ "/split/ta-bort/" <> text (expenseId e))
+                        , hxSwap_ "none"
                         ]
                         (l_ lang Lexicon.Remove)
                 maybe mempty toHtml message
@@ -398,3 +398,18 @@ pieChart_ e size =
       where
         toPercent :: Amount -> Float
         toPercent = (* 100) . coerce . (/ total)
+
+hxSwap_ :: Text -> Attribute
+hxSwap_ = Lucid.Base.makeAttribute "hx-swap"
+
+hxPatch_ :: Text -> Attribute
+hxPatch_ = Lucid.Base.makeAttribute "hx-patch"
+
+hxPost_ :: Text -> Attribute
+hxPost_ = Lucid.Base.makeAttribute "hx-post"
+
+hxTarget_ :: Text -> Attribute
+hxTarget_ = Lucid.Base.makeAttribute "hx-target"
+
+hxDelete_ :: Text -> Attribute
+hxDelete_ = Lucid.Base.makeAttribute "hx-delete"

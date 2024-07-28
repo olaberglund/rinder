@@ -6,7 +6,8 @@ import           Inter.Language (Language, flag, mkHref, toHref)
 import           Inter.Lexicon  (l_)
 import qualified Inter.Lexicon  as Lexicon
 import           Lucid
-import qualified Lucid.Htmx     as HX
+
+default (Text)
 
 -- | helper function to convert a Showable to a Text
 text :: (Show a) => a -> Text
@@ -20,10 +21,10 @@ baseTemplate' content = do
     doctype_
     html_ $ do
         head_ $ do
-            HX.useHtmx
-            HX.useHtmxExtension "json-enc"
-            HX.useHtmxExtension "sse"
-            link_ [rel_ "stylesheet", href_ ("/static/styles.css")]
+            script_ [src_ "https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"] ("" :: Text)
+            script_ [src_ "https://unpkg.com/htmx-ext-sse@2.2.1/sse.js"] ("" :: Text)
+            script_ [src_ "https://unpkg.com/htmx-ext-json-enc@2.0.0/json-enc.js"] ("" :: Text)
+            link_ [rel_ "stylesheet", href_ "/static/styles.css"]
             link_
                 [ rel_ "icon"
                 , type_ "image/png"
@@ -67,5 +68,5 @@ data Page404 = Page404 !Language !Text
 instance ToHtml Page404 where
     toHtml (Page404 lang mtext) = baseTemplate lang $ do
         h1_ "404"
-        p_ $ toHtml $ mtext
+        p_ $ toHtml mtext
     toHtmlRaw = toHtml
