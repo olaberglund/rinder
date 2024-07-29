@@ -7,6 +7,7 @@ module Server.Split.Handler (
     editExpensePageH,
 ) where
 
+import           Control.Monad          (unless)
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Aeson             (eitherDecodeStrict, encode)
 import qualified Data.ByteString        as BS
@@ -27,9 +28,20 @@ import           Server.Split.Html      (EditExpensePage (..),
                                          SplitPage (..), Transactions (..))
 import           Server.Utils.Handler   (err404', hxRedirect)
 import           Split                  (Expense (expenseDate, expenseId),
-                                         ExpenseForm, Transaction (..),
+                                         ExpenseForm, Share, Transaction (..),
                                          findExpense, settlements, singleDebtor,
                                          toExpense)
+import           System.Directory       (doesFileExist)
+
+getTransactions :: Env -> IO (Either String [Transaction])
+getTransactions env = do
+    let file = envTransactionsFile env
+    exists <- doesFileExist file
+    unless exists (writeFile file "[]")
+    res <- BS.readFile file
+    pure $ case eitherDecodeStrict res of
+        Right sl -> Right sl
+        Left err -> Left err
 
 settleUpH :: Env -> Language -> Handler Transactions
 settleUpH env lang = do
@@ -59,8 +71,8 @@ writeTransactionsHandlerHelper ::
     ([Transaction] -> [Transaction]) ->
     Handler Transactions
 writeTransactionsHandlerHelper env lang genNewTs = liftIO $ do
-    res <- BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
+    res <- getTransactions env
+    case res of
         Right ts -> do
             let newTs = genNewTs ts
             LBS.writeFile (envTransactionsFile env) (encode newTs)
@@ -69,15 +81,15 @@ writeTransactionsHandlerHelper env lang genNewTs = liftIO $ do
 
 splitPageH :: Env -> Language -> Handler SplitPage
 splitPageH env lang = liftIO $ do
-    res <- BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
+    res <- getTransactions env
+    case res of
         Right ts -> return (SplitPage lang ts)
         Left err -> print err >> return (SplitPage lang [])
 
 removeExpenseH :: Env -> Language -> UUID -> Handler NoContent
 removeExpenseH env lang uuid = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
+    res <- liftIO $ getTransactions env
+    case res of
         Right ts -> do
             liftIO $
                 LBS.writeFile
@@ -94,30 +106,16 @@ removeExpenseH env lang uuid = do
 
 saveExpenseH :: Env -> Language -> UUID -> ExpenseForm -> Handler EditExpensePage
 saveExpenseH env lang uuid form = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
+    res <- liftIO $ getTransactions env
+    case res of
         Right ts -> do
             let newTs = replaceExpense ts
             liftIO $ LBS.writeFile (envTransactionsFile env) (encode newTs)
             let mexp = findExpense uuid newTs
             case (mexp, mexp >>= singleDebtor) of
                 (Just e, Just debtor) ->
-                    return $
-                        EditExpensePage
-                            lang
-                            e
-                            debtor
-                            ( Just
-                                ( FeedbackMessage
-                                    Success
-                                    (l lang Lexicon.ExpenseSaved)
-                                )
-                            )
-                _ ->
-                    throwError $
-                        err404'
-                            lang
-                            (Just (l lang Lexicon.NoSuchExpense))
+                    return $ successPage e debtor
+                _ -> throwError $ err404' lang (Just (l lang Lexicon.NoSuchExpense))
         Left err -> liftIO (print err) >> throwError err500
   where
     replaceExpense :: [Transaction] -> [Transaction]
@@ -130,21 +128,33 @@ saveExpenseH env lang uuid form = do
     replaceExpense (e : es) = e : replaceExpense es
     replaceExpense [] = []
 
+    successPage :: Expense -> Share -> EditExpensePage
+    successPage e debtor =
+        EditExpensePage
+            lang
+            e
+            debtor
+            ( Just
+                ( FeedbackMessage
+                    Success
+                    (l lang Lexicon.ExpenseSaved)
+                )
+            )
+
 editExpensePageH :: Env -> Language -> UUID -> Handler EditExpensePage
 editExpensePageH env lang uuid = do
-    res <- liftIO $ BS.readFile (envTransactionsFile env)
-    case eitherDecodeStrict res of
-        Right ts -> do
-            let expense = findExpense uuid ts
-            case expense of
-                Just e -> case singleDebtor e of
-                    Just share -> return $ EditExpensePage lang e share Nothing
-                    Nothing ->
-                        throwError $
-                            err404'
-                                lang
-                                (Just (l lang Lexicon.MaxTwoPeople))
-                Nothing ->
-                    throwError $
-                        err404' lang (Just (l lang Lexicon.NoSuchExpense))
-        Left err -> liftIO (print err) >> throwError err500
+    res <- liftIO $ getTransactions env
+    case res of
+        Right ts -> handleExpense (findExpense uuid ts)
+        Left err -> printErrorAndThrow err
+  where
+    handleExpense (Just e) =
+        case singleDebtor e of
+            Just share -> return $ EditExpensePage lang e share Nothing
+            Nothing -> throwError (err404' lang (Just (l lang Lexicon.MaxTwoPeople)))
+    handleExpense Nothing =
+        throwError $ err404' lang (Just (l lang Lexicon.NoSuchExpense))
+
+    printErrorAndThrow err = do
+        liftIO (print err)
+        throwError err500

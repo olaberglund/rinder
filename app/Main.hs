@@ -9,15 +9,23 @@ import           System.Environment       (getArgs)
 main :: IO ()
 main =
     getArgs >>= \case
-        [p] -> case readMay p of
+        ["-h"] -> putStrLn helpMessage
+        ["--help"] -> putStrLn helpMessage
+        [p, transactionFile, shoppingFile] -> case readMay p of
             Nothing -> putStrLn "Port must be an integer"
             Just port ->
                 newEnv
-                    "transactions.json"
-                    "shopping-list.json"
+                    transactionFile
+                    shoppingFile
                     >>= run port . app
-        _ ->
-            newEnv
-                "dev-transactions.json"
-                "dev-shopping-list.json"
-                >>= run 8080 . app
+        _ -> putStrLn helpMessage
+
+dev :: IO ()
+dev =
+    newEnv
+        "dev-transactions.json"
+        "dev-shopping-list.json"
+        >>= run 8080 . app
+
+helpMessage :: String
+helpMessage = "Usage: server [port] [transactionFile] [shoppingFile]"

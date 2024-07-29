@@ -11,26 +11,33 @@ module Server.Shopping.Handler (
 ) where
 
 import           Control.Concurrent       (Chan, dupChan, readChan, writeChan)
-import           Control.Monad            (void, when)
+import           Control.Monad            (unless, void)
 import           Control.Monad.IO.Class   (liftIO)
 import           Control.Newtype.Generics (Newtype, over)
-import           Data.Aeson               (FromJSON (..), ToJSON, eitherDecode,
+import           Data.Aeson               (FromJSON (..), ToJSON,
                                            eitherDecodeStrict, encode)
 import qualified Data.Binary.Builder      as Builder
 import qualified Data.ByteString          as BS
+import           Data.ByteString.Lazy     (ByteString)
 import qualified Data.ByteString.Lazy     as LBS
 import qualified Data.Either              as Either
+import           Data.Foldable            (for_)
 import qualified Data.Map                 as Map
 import qualified Data.Maybe               as Maybe
 import           Data.Text                (Text)
+import qualified Data.Text                as Text
 import           Data.Text.Encoding       (encodeUtf8)
+import qualified Data.Text.Lazy           as TL
+import qualified Data.Text.Lazy.Encoding  as TL
 import           GHC.Generics             (Generic)
 import           Inter.Language           (Language)
 import           Inter.Lexicon            (l)
 import qualified Inter.Lexicon            as Lexicon
 import           Lucid                    (Attribute, ToHtml (toHtml), renderBS)
 import           Network.Wai.EventSource  (ServerEvent (..))
-import           Servant                  (Handler, NoContent (..))
+import           Servant                  (Handler, NoContent (..),
+                                           ServerError (..), err404, err500,
+                                           throwError)
 import           Servant.API.EventStream  (EventSource)
 import qualified Servant.Types.SourceT    as S
 import           Server.Env               (Env (envShoppingListFile, keepAliveChan))
@@ -42,7 +49,18 @@ import           Server.Shopping.Html     (Checkbox (..), Direction (..),
                                            ShoppingItems (..),
                                            ShoppingPage (..))
 import           Store.Grocery
+import           System.Directory         (doesFileExist)
 import qualified System.Timeout
+
+getShoppingList :: Env -> IO (Either String ShoppingList)
+getShoppingList env = do
+    let file = envShoppingListFile env
+    exists <- doesFileExist file
+    unless exists (writeFile file "[]")
+    res <- BS.readFile file
+    pure $ case eitherDecodeStrict res of
+        Right sl -> Right sl
+        Left err -> Left err
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
@@ -64,67 +82,58 @@ toggle Checked   = Unchecked
 toggle Unchecked = Checked
 
 removeAllH :: Env -> Language -> Grocery -> Handler NoContent
-removeAllH env lang grocery = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Right (sl :: ShoppingList) ->
-            updateAndBroadCast
-                env
-                lang
-                grocery
-                (over ShoppingList (Map.adjust (const []) (groceryName grocery)) sl)
-        Left err -> print err
-    return NoContent
+removeAllH env lang grocery = do
+    list <- liftIO $ getShoppingList env
+    case list of
+        Left err -> throwError err500{errBody = TL.encodeUtf8 . TL.pack $ "Error: " <> err}
+        Right list' -> do
+            liftIO $ updateAndBroadCast env lang grocery (removeAll list')
+            pure NoContent
+  where
+    removeAll :: ShoppingList -> ShoppingList
+    removeAll = over ShoppingList (Map.adjust (const []) (groceryName grocery))
 
 removeCheckedH :: Env -> Language -> Grocery -> Handler NoContent
-removeCheckedH env lang grocery = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Left err -> print err
-        Right sl ->
-            case listOfGrocery grocery sl of
-                Just items ->
-                    let newItems = filter ((== Unchecked) . siCheck) items
-                     in updateAndBroadCast
-                            env
-                            lang
-                            grocery
-                            ( over
-                                ShoppingList
-                                (Map.insert (groceryName grocery) newItems)
-                                sl
-                            )
-                Nothing -> print $ "No items found for " <> groceryName grocery
-    return NoContent
+removeCheckedH env lang grocery = do
+    list <- liftIO $ getShoppingList env
+    case list of
+        Left err -> throwError err500{errBody = TL.encodeUtf8 . TL.pack $ "Error: " <> err}
+        Right list' -> do
+            liftIO $ removeChecked list'
+            pure NoContent
+  where
+    removeChecked sl = case listOfGrocery grocery sl of
+        Just items ->
+            let newItems = filter ((== Unchecked) . siCheck) items
+             in updateAndBroadCast env lang grocery (over ShoppingList (Map.insert (groceryName grocery) newItems) sl)
+        Nothing -> print $ "No items found for " <> groceryName grocery
 
 toggleProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
-toggleProductH env lang grocery product' = liftIO $ do
-    res <- BS.readFile (envShoppingListFile env)
-    case eitherDecodeStrict res of
-        Right ps ->
-            case listOfGrocery grocery ps of
-                Just items ->
-                    void $
-                        updateAndBroadCast
-                            env
-                            lang
-                            grocery
-                            ( over
-                                ShoppingList
-                                ( Map.insert
-                                    (groceryName grocery)
-                                    (map toggleItem items)
-                                )
-                                ps
-                            )
-                Nothing -> print $ "No items found for " <> groceryName grocery
-        Left err -> print err
-    return NoContent
+toggleProductH env lang grocery product' = do
+    list <- liftIO $ getShoppingList env
+    case list of
+        Right list' -> handleList list'
+        Left err    -> throwError err500{errBody = encodeErr "Error: " err}
   where
+    handleList :: ShoppingList -> Handler NoContent
+    handleList list' =
+        case listOfGrocery grocery list' of
+            Just items -> updateItems items list'
+            Nothing -> throwError err404{errBody = encodeErr "No items found for " (Text.unpack (groceryName grocery))}
+
+    updateItems :: [ShoppingItem] -> ShoppingList -> Handler NoContent
+    updateItems items list' = do
+        let newItems = map toggleItem items
+        liftIO $ updateAndBroadCast env lang grocery (over ShoppingList (Map.insert (groceryName grocery) newItems) list')
+        pure NoContent
+
     toggleItem :: ShoppingItem -> ShoppingItem
     toggleItem i
         | siProduct i == product' = i{siCheck = toggle (siCheck i)}
         | otherwise = i
+
+    encodeErr :: String -> String -> ByteString
+    encodeErr msg err = TL.encodeUtf8 . TL.pack $ msg <> err
 
 {- | Convert a non-empty list of elements with a 'ToHtml' instance to a
 'ServerEvent' that can be sent to a client.
@@ -140,59 +149,54 @@ asServerEvent msgName =
 shoppingPageH :: Env -> Language -> Grocery -> Handler ShoppingPage
 shoppingPageH env lang grocery = liftIO $ do
     fetchedPromotions <- groceryGetOffers grocery
-    shoppingItems <- eitherDecode <$> LBS.readFile (envShoppingListFile env)
-    case shoppingItems of
-        Left err ->
-            putStrLn err
-                >> return
-                    ( ShoppingPage
-                        lang
-                        mempty
-                        (groceryName grocery)
-                        mempty
-                        (Nothing)
-                    )
-        Right list ->
-            case listOfGrocery grocery list of
-                Nothing -> do
-                    print $ "Creating new shopping list for " <> groceryName grocery
-                    let newList =
-                            over
-                                ShoppingList
-                                (Map.insert (groceryName grocery) [])
-                                list
-                    void $ updateAndBroadCast env lang grocery newList
-                    return
-                        ( ShoppingPage
-                            lang
-                            mempty
-                            (groceryName grocery)
-                            (Either.fromRight mempty fetchedPromotions)
-                            (Just [])
-                        )
-                Just items ->
-                    return
-                        ( ShoppingPage
-                            lang
-                            mempty
-                            (groceryName grocery)
-                            (Either.fromRight mempty fetchedPromotions)
-                            (Just items)
-                        )
+    shoppingItems <- getShoppingList env
+    handleShoppingItems fetchedPromotions shoppingItems
+  where
+    handleShoppingItems :: Either a [Product] -> Either String ShoppingList -> IO ShoppingPage
+    handleShoppingItems fetchedPromotions shoppingItems =
+        case shoppingItems of
+            Left err   -> handleShoppingItemsError err
+            Right list -> handleShoppingList fetchedPromotions list
+
+    handleShoppingItemsError :: String -> IO ShoppingPage
+    handleShoppingItemsError err = do
+        putStrLn err
+        return $ ShoppingPage lang mempty (groceryName grocery) mempty Nothing
+
+    handleShoppingList :: Either a [Product] -> ShoppingList -> IO ShoppingPage
+    handleShoppingList fetchedPromotions list =
+        case listOfGrocery grocery list of
+            Nothing -> do
+                createNewShoppingList list
+                return (mkShoppingPage fetchedPromotions [])
+            Just items -> return $ mkShoppingPage fetchedPromotions items
+
+    createNewShoppingList :: ShoppingList -> IO ()
+    createNewShoppingList list = do
+        print $ "Creating new shopping list for " <> groceryName grocery
+        let newList = over ShoppingList (Map.insert (groceryName grocery) []) list
+        void $ updateAndBroadCast env lang grocery newList
+
+    mkShoppingPage :: Either a [Product] -> [ShoppingItem] -> ShoppingPage
+    mkShoppingPage fetchedPromotions items =
+        ShoppingPage
+            lang
+            mempty
+            (groceryName grocery)
+            (Either.fromRight mempty fetchedPromotions)
+            (Just items)
 
 addProductH :: Env -> Language -> Grocery -> Product -> Handler NoContent
 addProductH env lang grocery product' = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
         Right ps ->
-            case listOfGrocery grocery ps of
-                Just items -> updateList ps items
-                Nothing    -> pure ()
+            for_ (listOfGrocery grocery ps) (updateList ps)
         Left err -> print err
     return NoContent
   where
     updateList :: ShoppingList -> [ShoppingItem] -> IO ()
-    updateList ps items = when (product' `notElem` map siProduct items) $ do
+    updateList ps items = unless (product' `elem` map siProduct items) $ do
         let newList = ShoppingItem product' Unchecked "" : items
             shoppingList =
                 over
@@ -237,41 +241,39 @@ noteProductH :: Env -> Language -> Grocery -> Note -> Handler NoContent
 noteProductH env lang grocery note = liftIO $ do
     res <- BS.readFile (envShoppingListFile env)
     case eitherDecodeStrict res of
-        Right ps ->
-            case listOfGrocery grocery ps of
-                Just items ->
-                    let newList = map modifyNote items
-                        shoppingList =
-                            over
-                                ShoppingList
-                                (Map.insert (groceryName grocery) newList)
-                                ps
-                     in updateAndBroadCast env lang grocery shoppingList
-                Nothing -> pure ()
+        Right ps -> handleShoppingList ps
         Left err -> print err
     return NoContent
   where
+    handleShoppingList :: ShoppingList -> IO ()
+    handleShoppingList ps =
+        case listOfGrocery grocery ps of
+            Just items -> updateAndBroadCast env lang grocery (updateItems items ps)
+            Nothing -> pure ()
+
+    updateItems :: [ShoppingItem] -> ShoppingList -> ShoppingList
+    updateItems = over ShoppingList . Map.insert (groceryName grocery) . map modifyNote
+
     modifyNote :: ShoppingItem -> ShoppingItem
     modifyNote i
         | productId (siProduct i) == noteId note = i{siNote = noteContent note}
         | otherwise = i
 
 updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO ()
-updateAndBroadCast env lang grocery items =
+updateAndBroadCast env lang grocery items = do
     LBS.writeFile (envShoppingListFile env) (encode items)
-        >> writeChan
-            (keepAliveChan env)
-            ( asServerEvent
-                (Just (groceryName grocery))
-                [ ShoppingItems
-                    lang
-                    (groceryName grocery)
-                    ( Maybe.fromMaybe
-                        []
-                        (unShoppingList items Map.!? groceryName grocery)
-                    )
-                ]
-            )
+    writeChan (keepAliveChan env) serverEvent
+  where
+    serverEvent :: ServerEvent
+    serverEvent =
+        asServerEvent (Just (groceryName grocery)) [items']
+
+    items' :: ShoppingItems
+    items' = ShoppingItems lang (groceryName grocery) getGroceryItems
+
+    getGroceryItems :: [ShoppingItem]
+    getGroceryItems =
+        Maybe.fromMaybe [] (unShoppingList items Map.!? groceryName grocery)
 
 productListH ::
     Language ->
@@ -281,25 +283,31 @@ productListH ::
     Handler ProductSearchList
 productListH lang grocery attributes search = liftIO $ do
     res <- groceryGetSearchProduct grocery (unSearch search)
-    case res of
-        Left err ->
-            print err
-                >> return
-                    ( ProductSearchList
-                        lang
-                        mempty
-                        mempty
-                        (l lang Lexicon.SearchResults)
-                        "searched-products"
-                    )
-        Right products ->
-            return $
-                ProductSearchList
-                    lang
-                    attributes
-                    products
-                    (l lang Lexicon.SearchResults)
-                    "searched-products"
+    handleSearchResult res
+  where
+    handleSearchResult :: (Show a) => Either a [Product] -> IO ProductSearchList
+    handleSearchResult res =
+        case res of
+            Left err       -> print err >> return emptySearchList
+            Right products -> return $ mkProductSearchList products
+
+    mkProductSearchList :: [Product] -> ProductSearchList
+    mkProductSearchList products =
+        ProductSearchList
+            lang
+            attributes
+            products
+            (l lang Lexicon.SearchResults)
+            "searched-products"
+
+    emptySearchList :: ProductSearchList
+    emptySearchList =
+        ProductSearchList
+            lang
+            mempty
+            mempty
+            (l lang Lexicon.SearchResults)
+            "searched-products"
 
 newtype ShoppingList = ShoppingList
     { unShoppingList :: Map.Map Text [ShoppingItem]

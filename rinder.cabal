@@ -109,6 +109,7 @@ executable rinder
     , bytestring
     , containers
     , deriving-aeson
+    , directory
     , http-api-data
     , http-client
     , http-client-tls
