@@ -74,7 +74,7 @@ instance ToHtml SplitPage where
                     fieldset_ [class_ "debt-form-group"] $ do
                         legend_ (l_ lang Lexicon.Debt)
                         div_ [class_ "debtor-form-group"] $ do
-                            select_ [name_ "debtor"] $ do
+                            select_ [name_ "debtor"] $
                                 mapM_
                                     ( \p ->
                                         option_
@@ -144,8 +144,7 @@ instance ToHtml Transactions where
             h2_ (l_ lang Lexicon.Expenses)
             if null transactions
                 then p_ (l_ lang Lexicon.NoExpenses)
-                else div_ [class_ "expenses-container"] $ do
-                    mapM_ (toHtml . TransactionHtml lang) transactions
+                else div_ [class_ "expenses-container"] $ mapM_ (toHtml . TransactionHtml lang) transactions
       where
         settles = simplifiedDebts transactions
 
@@ -156,7 +155,7 @@ iou_ lang (p, ious') = do
         , style_ $ "background-color: " <> personColor p
         ]
         $ toHtml
-        $ (personName p) <> " " <> l lang Lexicon.IsOwed
+        $ personName p <> " " <> l lang Lexicon.IsOwed
     mapM_ (debtItem_ lang) ious'
 
 debtItem_ :: (Monad m) => Language -> (Person, Amount) -> HtmlT m ()
@@ -171,8 +170,12 @@ debtItem_ lang (p, amount) =
                     (" " <> Text.unpack (l lang Lexicon.Currency))
                 )
 
-data EditExpensePage = EditExpensePage !Language !Expense !Share !(Maybe FeedbackMessage)
-    deriving stock (Show, Eq)
+data EditExpensePage
+    = EditExpensePage
+        !Language
+        !Expense
+        !Share
+        !(Maybe FeedbackMessage)
 
 instance ToHtml EditExpensePage where
     toHtmlRaw = toHtml
@@ -211,14 +214,12 @@ instance ToHtml EditExpensePage where
                 fieldset_ [class_ "debt-form-group"] $ do
                     legend_ (l_ lang Lexicon.Debt)
                     div_ [class_ "debtor-form-group"] $ do
-                        select_ [name_ "debtor"] $ do
+                        select_ [name_ "debtor"] $
                             mapM_
                                 ( \p ->
                                     option_
                                         ( [value_ (personName p)]
-                                            <> if p == sharePerson debtorShare
-                                                then [selected_ "selected"]
-                                                else []
+                                            <> ([selected_ "selected" | p == sharePerson debtorShare])
                                         )
                                         (toHtml (personName p))
                                 )
@@ -235,18 +236,15 @@ instance ToHtml EditExpensePage where
                             [ name_ "share-type"
                             , value_ (text (shareType debtorShare))
                             ]
-                            $ do
-                                mapM_
-                                    ( \st ->
-                                        option_
-                                            ( [value_ (shareTypeToText st)]
-                                                <> if st == shareType debtorShare
-                                                    then [selected_ "selected"]
-                                                    else []
-                                            )
-                                            (toHtml (shareTypeSymbol lang st))
-                                    )
-                                    [Percentage, Fixed]
+                            $ mapM_
+                                ( \st ->
+                                    option_
+                                        ( [value_ (shareTypeToText st)]
+                                            <> ([selected_ "selected" | st == shareType debtorShare])
+                                        )
+                                        (toHtml (shareTypeSymbol lang st))
+                                )
+                                [Percentage, Fixed]
                         span_ [class_ "form-comment"] (l_ lang Lexicon.Of)
                     div_ [class_ "debtor-form-group"] $ do
                         input_
@@ -291,8 +289,7 @@ instance ToHtml TransactionHtml where
     toHtml (TransactionHtml lang (ExpenseTransaction e)) =
         div_ [class_ "expense-container"] $ do
             div_ [class_ "expense-info-container"] $ do
-                h3_ [class_ "expense-title", title_ (expenseRubric e)] $ do
-                    toHtml $ expenseRubric e
+                h3_ [class_ "expense-title", title_ (expenseRubric e)] $ toHtml $ expenseRubric e
                 div_ [class_ "date-container"] $ do
                     span_ $ toHtml $ formatDate $ expenseDate e
                     span_
@@ -348,8 +345,7 @@ instance ToHtml TransactionHtml where
                 i_ [class_ "settle-icons"] "💸"
 
 split_ :: (Monad m) => Expense -> HtmlT m ()
-split_ expense = div_ [class_ "split-container"] $ do
-    pieChart_ expense 50
+split_ expense = div_ [class_ "split-container"] $ pieChart_ expense 50
 
 {- | Pie chart for expense split. Size is in pixels.
 Colors are based on the person's color.

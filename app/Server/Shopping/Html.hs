@@ -112,7 +112,6 @@ data ShoppingPage = ShoppingPage
     , spPromotions   :: ![Product]
     , spShoppingList :: !(Maybe [ShoppingItem])
     }
-    deriving stock (Show, Eq)
 
 instance ToHtml ShoppingPage where
     toHtml (ShoppingPage lang products grocery promotions shoppingList) = baseTemplate lang $ do

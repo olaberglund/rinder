@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 -- | This module defines the API for the server.
 module Server.Api (RootApi (..), PagesApi (..)) where
 
@@ -21,8 +23,8 @@ provided when constructing the API.
 data RootApi as = RootApi
     { homePageEP :: !(as :- Get '[HTML] NoContent)
     -- | static files are served from the "static" directory
-    , staticEP   :: !(as :- "static" :> Raw)
     , pagesEP    :: !(as :- Capture "lang" Language :> NamedRoutes PagesApi)
+    , staticEP   :: !(as :- Raw)
     }
     deriving stock (Generic)
 
@@ -36,8 +38,4 @@ data PagesApi as = PagesApi {
     deriving stock (Generic)
 
 
-data TodoApi as = TodoApi
-    { todoPageEP :: !(as :- Get '[HTML] NoContent)
-    }
-    deriving stock (Generic)
 {- FOURMOLU_ENABLE -}

@@ -44,6 +44,12 @@ build-type:      Simple
 
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
 extra-doc-files: CHANGELOG.md
+data-dir:        static
+data-files:
+  fonten-regular.otf
+  images/favicon.ico
+  scripts.js
+  styles.css
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
@@ -64,6 +70,7 @@ executable rinder
   other-modules:
     Inter.Language
     Inter.Lexicon
+    Paths_rinder
     Server.Api
     Server.App
     Server.Env
@@ -129,6 +136,7 @@ executable rinder
     , wai-extra
     , warp
 
+  autogen-modules:    Paths_rinder
   ghc-options:        -threaded
 
   -- Directories containing source files.

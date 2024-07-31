@@ -1,10 +1,11 @@
-module Main (main) where
+module Main (main, dev) where
 
 import           Network.Wai.Handler.Warp (run)
 import           Safe                     (readMay)
 import           Server.App               (app)
 import           Server.Env               (newEnv)
 import           System.Environment       (getArgs)
+import           System.Exit              (exitFailure)
 
 main :: IO ()
 main =
@@ -18,7 +19,7 @@ main =
                     transactionFile
                     shoppingFile
                     >>= run port . app
-        _ -> putStrLn helpMessage
+        _ -> putStrLn helpMessage >> exitFailure
 
 dev :: IO ()
 dev =

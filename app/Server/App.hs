@@ -10,7 +10,7 @@ import           Servant                 (NamedRoutes, Proxy (Proxy),
 import           Servant.Server
 import           Servant.Server.Generic  (AsServer)
 import           Server.Api
-import           Server.Env              (Env)
+import           Server.Env              (Env (..))
 import           Server.Shopping.Api
 import           Server.Shopping.Handler
 import           Server.Shopping.Html
@@ -30,7 +30,6 @@ server :: Env -> RootApi AsServer
 server env =
     RootApi
         { homePageEP = redirect (home SE)
-        , staticEP = serveDirectoryWebApp "static"
         , pagesEP = \lang ->
             PagesApi
                 { languageHomePageEP = redirect (home lang)
@@ -60,6 +59,7 @@ server env =
                         , removeExpenseEp = removeExpenseH env lang
                         }
                 }
+        , staticEP = serveDirectoryWebApp (envStaticDir env)
         }
   where
     home lang = Text.encodeUtf8 $ mkHref lang "/split"

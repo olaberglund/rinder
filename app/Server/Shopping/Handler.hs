@@ -40,7 +40,8 @@ import           Servant                  (Handler, NoContent (..),
                                            throwError)
 import           Servant.API.EventStream  (EventSource)
 import qualified Servant.Types.SourceT    as S
-import           Server.Env               (Env (envShoppingListFile, keepAliveChan))
+import           Server.Env               (Env (envShoppingListFile),
+                                           envKeepAliveChan)
 import           Server.Shopping.Html     (Checkbox (..), Direction (..),
                                            Note (noteContent, noteId),
                                            ProductSearchList (..),
@@ -64,7 +65,7 @@ getShoppingList env = do
 
 sseH :: Env -> Handler EventSource
 sseH env = liftIO $ do
-    chan <- dupChan $ keepAliveChan env
+    chan <- dupChan $ envKeepAliveChan env
     return $ S.fromStepT (S.Yield keepAlive (rest chan))
   where
     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
@@ -262,7 +263,7 @@ noteProductH env lang grocery note = liftIO $ do
 updateAndBroadCast :: Env -> Language -> Grocery -> ShoppingList -> IO ()
 updateAndBroadCast env lang grocery items = do
     LBS.writeFile (envShoppingListFile env) (encode items)
-    writeChan (keepAliveChan env) serverEvent
+    writeChan (envKeepAliveChan env) serverEvent
   where
     serverEvent :: ServerEvent
     serverEvent =
@@ -283,14 +284,10 @@ productListH ::
     Handler ProductSearchList
 productListH lang grocery attributes search = liftIO $ do
     res <- groceryGetSearchProduct grocery (unSearch search)
-    handleSearchResult res
+    case res of
+        Left err       -> print err >> return emptySearchList
+        Right products -> return $ mkProductSearchList products
   where
-    handleSearchResult :: (Show a) => Either a [Product] -> IO ProductSearchList
-    handleSearchResult res =
-        case res of
-            Left err       -> print err >> return emptySearchList
-            Right products -> return $ mkProductSearchList products
-
     mkProductSearchList :: [Product] -> ProductSearchList
     mkProductSearchList products =
         ProductSearchList

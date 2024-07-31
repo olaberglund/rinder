@@ -24,11 +24,11 @@ baseTemplate' content = do
             script_ [src_ "https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"] ("" :: Text)
             script_ [src_ "https://unpkg.com/htmx-ext-sse@2.2.1/sse.js"] ("" :: Text)
             script_ [src_ "https://unpkg.com/htmx-ext-json-enc@2.0.0/json-enc.js"] ("" :: Text)
-            link_ [rel_ "stylesheet", href_ "/static/styles.css"]
+            link_ [rel_ "stylesheet", href_ "/styles.css"]
             link_
                 [ rel_ "icon"
-                , type_ "image/png"
-                , href_ "/static/images/favicon.ico"
+                , type_ "image/x-icon"
+                , href_ "/images/favicon.ico"
                 ]
             meta_ [charset_ "utf-8"]
             meta_
@@ -38,7 +38,7 @@ baseTemplate' content = do
             script_
                 [ defer_ "true"
                 , type_ "text/javascript"
-                , src_ "/static/scripts.js"
+                , src_ "/scripts.js"
                 ]
                 ("" :: Text)
             title_ "Hörlund"
@@ -63,7 +63,6 @@ navbar_ lang = nav_ $ ul_ $ do
         )
 
 data Page404 = Page404 !Language !Text
-    deriving stock (Show, Eq)
 
 instance ToHtml Page404 where
     toHtml (Page404 lang mtext) = baseTemplate lang $ do
