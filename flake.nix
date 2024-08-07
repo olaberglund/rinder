@@ -3,13 +3,19 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     haskell-flake.url = "github:srid/haskell-flake";
+    mission-control.url = "github:Platonic-Systems/mission-control";
+    flake-root.url = "github:srid/flake-root";
   };
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = nixpkgs.lib.systems.flakeExposed;
-      imports = [ inputs.haskell-flake.flakeModule ];
+      imports = [
+        inputs.haskell-flake.flakeModule
+        inputs.mission-control.flakeModule
+        inputs.flake-root.flakeModule
+      ];
 
-      perSystem = { self', pkgs, ... }: {
+      perSystem = { self', pkgs, config, ... }: {
 
         # Typically, you just want a single project named "default". But
         # multiple projects are also possible, each using different GHC version.
@@ -50,13 +56,79 @@
               };
             };
 
+            mkShellArgs = {
+
+              buildInputs = with pkgs; [ postgresql inotify-tools git ];
+
+              shellHook = ''
+                mkdir -p .nix-shell
+                export NIX_SHELL_DIR=$PWD/.nix-shell
+                export PGDATA="$NIX_SHELL_DIR/db"
+
+                if ! test -d "$PGDATA"
+                then
+                  pg_ctl initdb -D  "$PGDATA"
+                  # sed -i "s|^#port.*$|port = 5433|" "$PGDATA/postgresql.conf"
+
+                  HOST_COMMON="host\s\+all\s\+all"
+                  sed -i "s|^$HOST_COMMON.*127.*$|host all all 0.0.0.0/0 trust|" "$PGDATA/pg_hba.conf"
+                  sed -i "s|^$HOST_COMMON.*::1.*$|host all all ::/0 trust|"      "$PGDATA/pg_hba.conf"
+                fi
+              '';
+
+              LOCALE_ARCHIVE = if pkgs.stdenv.isLinux then
+                "${pkgs.glibcLocales}/lib/locale/locale-archive"
+              else
+                "";
+
+            };
+
             hlsCheck.enable =
               pkgs.stdenv.isDarwin; # On darwin, sandbox is disabled, so HLS can use the network.
+          };
+          autoWire = [ "packages" "apps" "checks" ]; # Wire all but the devShell
+
+        };
+
+        mission-control.scripts = {
+          up = {
+            description = "Start the postgres server";
+            exec = ''
+              pg_ctl                                                  \
+                -D "$PGDATA"                                          \
+                -l "$PGDATA/postgres.log"                             \
+                -o "-c unix_socket_directories=$PGDATA"               \
+                -o "-c listen_addresses='*'"                          \
+                -o "-c log_destination='stderr'"                      \
+                -o "-c logging_collector=on"                          \
+                -o "-c log_directory='log'"                           \
+                -o "-c log_filename='postgresql-%Y-%m-%d_%H%M%S.log'" \
+                -o "-c log_min_messages=info"                         \
+                -o "-c log_min_error_statement=info"                  \
+                -o "-c log_connections=on"                            \
+                start
+            '';
+          };
+          down = {
+            description = "Stop the postgres server";
+            exec = ''pg_ctl -D "$PGDATA" stop '';
+          };
+          is_ready = {
+            description = "Check if the postgres server is ready";
+            exec = ''pg_isready -h "$PGDATA"'';
           };
         };
 
         # haskell-flake doesn't set the default package, but you can do it here.
         packages.default = self'.packages.rinder;
+
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [
+            config.haskellProjects.default.outputs.devShell
+            config.flake-root.devShell
+            config.mission-control.devShell
+          ];
+        };
       };
     };
 }
