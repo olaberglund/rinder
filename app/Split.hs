@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Split (
     Amount (..),
     Expense (..),
@@ -26,12 +28,15 @@ import           Data.Coerce        (coerce)
 import           Data.Function      (on)
 import qualified Data.List          as List
 import qualified Data.Map           as Map
+import           Data.Ratio         ((%))
 import           Data.Text          (Text)
 import qualified Data.Text          as Text
 import qualified Data.Time          as Time
 import           Data.UUID          (UUID)
 import           GHC.Generics       (Generic)
-import qualified Safe               as Safe
+import qualified Money
+import           Money.Aeson        ()
+import qualified Safe
 import           Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
 data Person = Person
@@ -114,16 +119,7 @@ debts = Map.unions . List.unfoldr payOffStep
          in Just (iousToMap ious', (cs', ds))
     payOffStep _ = Nothing
 
-newtype Amount = Amount {unAmount :: Float}
-    deriving stock (Generic, Show)
-    deriving newtype (Num, Eq, Ord, Fractional, FromJSON, ToJSON)
-
-instance FromForm Amount where
-    fromForm form = do
-        a <- parseUnique "amount" form
-        if a < 0
-            then Left "Amount may not be negative"
-            else Right $ Amount a
+type Amount = Money.Dense "SEK"
 
 data Transaction
     = ExpenseTransaction !Expense
@@ -133,9 +129,9 @@ data Transaction
 
 data Expense = Expense
     { expenseSplit  :: !Split
-    , expenseTotal  :: !Amount
     , expensePaidBy :: !Person
     , expenseRubric :: !Text
+    , expenseTotal  :: !Amount
     , expenseId     :: !UUID
     , expenseDate   :: !Time.LocalTime
     }
@@ -159,50 +155,49 @@ data Settlement = Settlement
 
 -- | the current implementation of the expense form
 data ExpenseForm = ExpenseForm
-    { efDebtor    :: !Person
-    , efPaidBy    :: !Person
-    , efSplit     :: !Split
-    , efShareType :: !ShareType
-    , efAmount    :: !Float
-    , efRubric    :: !Text
-    , efTotal     :: !Amount
+    { efDebtor :: !Person
+    , efPaidBy :: !Person
+    , efSplit  :: !Split
+    , efRubric :: !Text
+    , efTotal  :: !Amount
     }
     deriving stock (Show, Eq)
 
+-- instance FromForm ShareValue where
+--     fromForm form =
+--         parseUnique "share-type" form >>= \case
+--             ("percentage" :: Text) -> Right Percentage
+--             ("fixed" :: Text) -> Right Fixed
+--             _ -> Left "Invalid share type"
+
 instance FromForm ExpenseForm where
     fromForm form = do
-        debtor <- parseUnique "debtor" form >>= findPerson
-        paidBy <- parseUnique "paidBy" form >>= findPerson
-        total <- parseUnique "total" form >>= mayNotBeNegative "total"
-        rubric <- parseUnique "rubric" form >>= mayNotBeEmpty
-        amount <- parseUnique "amount" form >>= mayNotBeNegative "amount"
-        shareType <- fromForm form
-        oPerson <- note "Couldn't find person" (otherPerson debtor)
-        split' <- case shareType of
-            Percentage ->
-                if amount > 100
+        efDebtor <- parseUnique "debtor" form >>= findPerson
+        efPaidBy <- parseUnique "paidBy" form >>= findPerson
+        efRubric <- parseUnique "rubric" form >>= mayNotBeEmpty
+        oPerson <- note "Couldn't find person" (otherPerson efDebtor)
+        shareType :: Text <- parseUnique "share-type" form
+        efTotal <- parseUnique "total" form
+        efSplit <- case shareType of
+            "percentage" -> do
+                pct <- parseUnique "amount" form
+                if pct > 100
                     then Left "Percentage may not be greater than 100"
                     else
                         mkSplit
-                            (Amount total)
-                            [ Share Percentage debtor (Amount amount) True
-                            , Share Percentage oPerson (Amount (100 - amount)) False
+                            efTotal
+                            [ Share (Percentage pct) efDebtor True
+                            , Share (Percentage pct) oPerson False
                             ]
-            Fixed ->
+            "fixed" -> do
+                amount <- parseUnique "amount" form
                 mkSplit
-                    (Amount total)
-                    [ Share Fixed debtor (Amount amount) True
-                    , Share Fixed oPerson (Amount (total - amount)) False
+                    efTotal
+                    [ Share (Fixed amount) efDebtor True
+                    , Share (Fixed amount) oPerson False
                     ]
-        pure $
-            ExpenseForm
-                debtor
-                paidBy
-                split'
-                shareType
-                amount
-                rubric
-                (Amount total)
+            _ -> Left "Invalid share type"
+        pure $ ExpenseForm{..}
       where
         findPerson :: Text -> Either Text Person
         findPerson n =
@@ -228,33 +223,25 @@ instance FromForm ExpenseForm where
 -- | An expense is dated, and has a unique identifier
 toExpense :: ExpenseForm -> UUID -> Time.LocalTime -> Expense
 toExpense (ExpenseForm{efSplit, efTotal, efPaidBy, efRubric}) =
-    Expense efSplit efTotal efPaidBy efRubric
+    Expense efSplit efPaidBy efRubric efTotal
 
 -- | A person can be responsible for a percentage or fixed amount of an expense
 data ShareType
-    = Percentage
-    | Fixed
+    = Percentage Int
+    | Fixed Amount
     deriving stock (Generic, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
 
 data Share = Share
     { shareType    :: !ShareType
     , sharePerson  :: !Person
-    , shareAmount  :: !Amount
     , shareEntered :: !Bool
     }
     deriving stock (Eq, Generic, Show)
     deriving anyclass (FromJSON, ToJSON)
 
-instance FromForm ShareType where
-    fromForm form =
-        parseUnique "share-type" form >>= \case
-            ("percentage" :: Text) -> Right Percentage
-            ("fixed" :: Text) -> Right Fixed
-            _ -> Left "Invalid share type"
-
-data Split = Split
-    { splitShares :: ![Share]
+newtype Split = Split
+    { splitShares :: [Share]
     }
     deriving stock (Generic, Show, Eq)
     deriving anyclass (FromJSON, ToJSON)
@@ -268,7 +255,7 @@ data IOU = IOU
 
 iou :: Transaction -> [IOU]
 iou (ExpenseTransaction e) =
-    [ IOU (sharePerson s) (expensePaidBy e) (debtAmount (expenseTotal e) s)
+    [ IOU (sharePerson s) (expensePaidBy e) (share (expenseTotal e) (shareType s))
     | s <- splitShares (expenseSplit e)
     , sharePerson s /= expensePaidBy e
     ]
@@ -285,9 +272,10 @@ settlements tz utc ts =
 formatDate :: Time.LocalTime -> Text
 formatDate = Text.pack . Time.formatTime Time.defaultTimeLocale "%F - %R"
 
-debtAmount :: Amount -> Share -> Amount
-debtAmount total (Share Percentage _ p _) = (p * total) / 100
-debtAmount _ (Share Fixed _ a _)          = a
+share :: Amount -> ShareType -> Amount
+share total = \case
+    Percentage pct -> total * Money.dense' (fromIntegral pct % 100)
+    Fixed a -> a
 
 iousToMap :: [IOU] -> DebtMap
 iousToMap = List.foldl' accumDebts Map.empty
@@ -308,12 +296,12 @@ iousToMap = List.foldl' accumDebts Map.empty
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
-    | any ((< 0) . shareAmount) shares = Left "Shares may not be negative"
-    | sum (map (debtAmount total) shares) /= total =
+    | undefined = Left "Shares may not be negative"
+    | undefined =
         Left "Sum of shares does not equal total"
     | length (List.nub shares) /= length shares =
         Left "A person may not be listed more than once in the split"
-    | length (shares) < 2 =
+    | length shares < 2 =
         Left "An expense must be split between at least two people"
     | otherwise = Right $ Split $ List.sortOn sharePerson shares
 

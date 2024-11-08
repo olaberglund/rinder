@@ -46,21 +46,22 @@ baseTemplate' content = do
             content
 
 navbar_ :: (Monad m) => Language -> HtmlT m ()
-navbar_ lang = nav_ $ ul_ $ do
+navbar_ _lang = nav_ $ ul_ $ do
     span_ [id_ "language-links"] $ do
         mapM_
             (\(lang', flag') -> li_ (a_ [class_ "language-link", href_ (toHref lang')] flag'))
             (zip (enumFrom minBound) (map (toHtml . flag) (enumFrom minBound)))
-    li_
-        ( a_
-            [href_ $ mkHref lang "/inkop/willys"]
-            (l_ lang Lexicon.NavbarShoppingList)
-        )
-    li_
-        ( a_
-            [href_ $ mkHref lang "/split"]
-            (l_ lang Lexicon.NavbarSplit)
-        )
+
+-- li_
+--     ( a_
+--         [href_ $ mkHref lang "/inkop/willys"]
+--         (l_ lang Lexicon.NavbarShoppingList)
+--     )
+-- li_
+--     ( a_
+--         [href_ $ mkHref lang "/split"]
+--         (l_ lang Lexicon.NavbarSplit)
+--     )
 
 data Page404 = Page404 !Language !Text
 

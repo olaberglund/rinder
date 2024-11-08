@@ -124,6 +124,8 @@ executable rinder
     , lucid
     , newtype-generics
     , safe
+    , safe-money
+    , safe-money-aeson
     , servant
     , servant-client
     , servant-client-core
