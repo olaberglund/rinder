@@ -313,7 +313,7 @@ iousToMap = List.foldl' accumDebts Map.empty
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
-    | toRational total /= sum (value . shareValue <$> shares) =
+    | toRational total /= sum (toRational . share total . shareValue <$> shares) =
         Left "Sum of shares does not equal total"
     | length (List.nub shares) /= length shares =
         Left "A person may not be listed more than once in the split"
