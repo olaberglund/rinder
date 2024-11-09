@@ -33,9 +33,7 @@ import           Data.Aeson         (FromJSON, ToJSON, (.:))
 import qualified Data.Aeson         as Aeson
 import qualified Data.Aeson.Types   as Aeson.Types
 import           Data.Bifunctor     (bimap)
-import qualified Data.ByteString    as BS
 import           Data.Coerce        (coerce)
-import           Data.Foldable      (foldl')
 import           Data.Function      (on)
 import qualified Data.List          as List
 import qualified Data.Map           as Map
@@ -44,7 +42,6 @@ import           Data.Text          (Text)
 import qualified Data.Text          as Text
 import qualified Data.Time          as Time
 import           Data.UUID          (UUID)
-import           Debug.Trace
 import           GHC.Generics       (Generic)
 import qualified Money
 import           Money.Aeson        ()
@@ -190,7 +187,7 @@ instance FromForm ExpenseForm where
         efRubric <- parseUnique "rubric" form >>= mayNotBeEmpty
         oPerson <- note "Couldn't find person" (otherPerson efDebtor)
         shareType :: Text <- parseUnique "share-type" form
-        efTotal <- parseUnique "total" form >>= parseMoney
+        efTotal <- parseUnique "total" form >>= parseAmount
         efSplit <- case shareType of
             "percentage" -> do
                 pct <- parseUnique "value" form >>= mayNotBeNegative "Percentage"
@@ -214,8 +211,10 @@ instance FromForm ExpenseForm where
             maybe (Left $ "Person " <> n <> " not found") Right $
                 List.find ((== n) . personName) people
 
-        parseMoney :: Text -> Either Text Amount
-        parseMoney = note "Could not parse money" . Money.denseFromDecimal Money.defaultDecimalConf
+        parseAmount :: Text -> Either Text Amount
+        parseAmount inp = case Money.denseFromDecimal Money.defaultDecimalConf inp of
+            Just a -> if a >= 0 then Right a else Left "Amount may not be negative"
+            Nothing -> Left "Could not parse amount"
 
         otherPerson :: Person -> Maybe Person
         otherPerson p = Safe.headMay (filter (/= p) people)
@@ -314,7 +313,7 @@ iousToMap = List.foldl' accumDebts Map.empty
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
-    | toRational total == foldl' (+) 0 (value . shareValue <$> shares) =
+    | toRational total /= sum (value . shareValue <$> shares) =
         Left "Sum of shares does not equal total"
     | length (List.nub shares) /= length shares =
         Left "A person may not be listed more than once in the split"

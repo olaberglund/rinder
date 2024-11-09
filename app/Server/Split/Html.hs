@@ -92,6 +92,7 @@ instance ToHtml SplitPage where
                                 , id_ "value"
                                 , name_ "value"
                                 , value_ "50"
+                                , min_ "0"
                                 ]
                             select_ [name_ "share-type"] $ do
                                 option_
