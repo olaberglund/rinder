@@ -22,12 +22,18 @@ module Split (
     simplifiedDebts,
     singleDebtor,
     toExpense,
+    toNewShare,
+    OldTransaction (..),
+    toNewExpense,
 ) where
 
 import qualified Control.Arrow      as Arrow
 import           Control.Monad      ((>=>))
-import           Data.Aeson         (FromJSON, ToJSON)
+import           Data.Aeson         (FromJSON, ToJSON, (.:))
+import qualified Data.Aeson         as Aeson
+import qualified Data.Aeson.Types   as Aeson.Types
 import           Data.Bifunctor     (bimap)
+import qualified Data.ByteString    as BS
 import           Data.Coerce        (coerce)
 import           Data.Foldable      (foldl')
 import           Data.Function      (on)
@@ -42,6 +48,7 @@ import           Debug.Trace
 import           GHC.Generics       (Generic)
 import qualified Money
 import           Money.Aeson        ()
+import           Numeric            (showFFloat)
 import qualified Safe
 import           Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
@@ -372,3 +379,55 @@ showAmount = Money.denseToDecimal Money.defaultDecimalConf Money.Round
 
 showShare :: Share -> Text
 showShare = showAmount . Money.dense' . value . shareValue
+
+toNewExpense :: Aeson.Object -> Aeson.Types.Parser Expense
+toNewExpense o = do
+    expensePaidBy <- o .: "expensePaidBy"
+    expenseRubric <- o .: "expenseRubric"
+    oldTotal :: Float <- o .: "expenseTotal"
+    expenseId <- o .: "expenseId"
+    expenseDate <- o .: "expenseDate"
+    oldSplit <- o .: "expenseSplit"
+    oldSplitShares <- oldSplit .: "splitShares"
+    splitShares <- mapM toNewShare oldSplitShares
+    let expenseSplit = Split splitShares
+    let mexpenseTotal = Money.denseFromDecimal Money.defaultDecimalConf $ Text.pack $ showFFloat (Just 2) oldTotal ""
+
+    case mexpenseTotal of
+        Nothing           -> fail "Could not parse expenseTotal"
+        Just expenseTotal -> pure (Expense{..})
+
+toNewSettlement :: Aeson.Object -> Aeson.Types.Parser Settlement
+toNewSettlement o = do
+    settlementFrom <- o .: "settlementFrom"
+    settlementTo <- o .: "settlementTo"
+    oldAmount :: Float <- o .: "settlementAmount"
+    settlementDate <- o .: "settlementDate"
+    let msettlementAmount = Money.denseFromDecimal Money.defaultDecimalConf $ Text.pack $ showFFloat (Just 2) oldAmount ""
+
+    case msettlementAmount of
+        Nothing               -> fail "Could not parse settlementAmount"
+        Just settlementAmount -> pure Settlement{..}
+
+toNewShare :: Aeson.Object -> Aeson.Types.Parser Share
+toNewShare o = do
+    amount :: Float <- o .: "shareAmount"
+    shareType <- o .: "shareType"
+    sharePerson <- o .: "sharePerson"
+    shareEntered <- o .: "shareEntered"
+    let val = case shareType of
+            Percentage -> Value Percentage (approxRational amount 0.0001 / 100)
+            Fixed      -> Value Fixed (approxRational amount 0.0001)
+    pure $ Share val sharePerson shareEntered
+
+newtype OldTransaction = OldTransaction Transaction
+    deriving stock (Show)
+
+instance FromJSON OldTransaction where
+    parseJSON = Aeson.withObject "OldTransaction" $ \o -> do
+        transactionType :: Text <- o .: "tag"
+        content <- o .: "contents"
+        case transactionType of
+            "ExpenseTransaction" -> OldTransaction . ExpenseTransaction <$> toNewExpense content
+            "SettlementTransaction" -> OldTransaction . SettlementTransaction <$> toNewSettlement content
+            _ -> fail "Invalid transaction type"
