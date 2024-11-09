@@ -1,13 +1,17 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module Split (
-    Amount (..),
+    Amount,
+    showShare,
     Expense (..),
     ExpenseForm,
     Person (..),
     Settlement (..),
     Share (..),
+    showAmount,
     ShareType (..),
+    Value (..),
     Split (..),
     Transaction (..),
     findExpense,
@@ -25,14 +29,16 @@ import           Control.Monad      ((>=>))
 import           Data.Aeson         (FromJSON, ToJSON)
 import           Data.Bifunctor     (bimap)
 import           Data.Coerce        (coerce)
+import           Data.Foldable      (foldl')
 import           Data.Function      (on)
 import qualified Data.List          as List
 import qualified Data.Map           as Map
-import           Data.Ratio         ((%))
+import           Data.Ratio         (approxRational)
 import           Data.Text          (Text)
 import qualified Data.Text          as Text
 import qualified Data.Time          as Time
 import           Data.UUID          (UUID)
+import           Debug.Trace
 import           GHC.Generics       (Generic)
 import qualified Money
 import           Money.Aeson        ()
@@ -177,24 +183,21 @@ instance FromForm ExpenseForm where
         efRubric <- parseUnique "rubric" form >>= mayNotBeEmpty
         oPerson <- note "Couldn't find person" (otherPerson efDebtor)
         shareType :: Text <- parseUnique "share-type" form
-        efTotal <- parseUnique "total" form
+        efTotal <- parseUnique "total" form >>= parseMoney
         efSplit <- case shareType of
             "percentage" -> do
-                pct <- parseUnique "amount" form
-                if pct > 100
+                pct <- parseUnique "value" form >>= mayNotBeNegative "Percentage"
+                let pct' = approxRational pct 0.0001 / 100
+                if pct' > 1
                     then Left "Percentage may not be greater than 100"
-                    else
-                        mkSplit
-                            efTotal
-                            [ Share (Percentage pct) efDebtor True
-                            , Share (Percentage pct) oPerson False
-                            ]
+                    else mkSplit efTotal [Share (Value Percentage pct') efDebtor True, Share (Value Percentage (1 - pct')) oPerson False]
             "fixed" -> do
-                amount <- parseUnique "amount" form
+                amount <- parseUnique "value" form >>= mayNotBeNegative "Amount"
+                let amount' = approxRational amount 0.0001
                 mkSplit
                     efTotal
-                    [ Share (Fixed amount) efDebtor True
-                    , Share (Fixed amount) oPerson False
+                    [ Share (Value Fixed amount') efDebtor True
+                    , Share (Value Fixed (toRational efTotal - amount')) oPerson False
                     ]
             _ -> Left "Invalid share type"
         pure $ ExpenseForm{..}
@@ -203,6 +206,9 @@ instance FromForm ExpenseForm where
         findPerson n =
             maybe (Left $ "Person " <> n <> " not found") Right $
                 List.find ((== n) . personName) people
+
+        parseMoney :: Text -> Either Text Amount
+        parseMoney = note "Could not parse money" . Money.denseFromDecimal Money.defaultDecimalConf
 
         otherPerson :: Person -> Maybe Person
         otherPerson p = Safe.headMay (filter (/= p) people)
@@ -226,14 +232,19 @@ toExpense (ExpenseForm{efSplit, efTotal, efPaidBy, efRubric}) =
     Expense efSplit efPaidBy efRubric efTotal
 
 -- | A person can be responsible for a percentage or fixed amount of an expense
-data ShareType
-    = Percentage Int
-    | Fixed Amount
+data ShareType = Percentage | Fixed
+    deriving stock (Generic, Eq, Show)
+    deriving anyclass (FromJSON, ToJSON)
+
+data Value = Value
+    { valueType :: ShareType
+    , value     :: Rational
+    }
     deriving stock (Generic, Eq, Show)
     deriving anyclass (FromJSON, ToJSON)
 
 data Share = Share
-    { shareType    :: !ShareType
+    { shareValue   :: !Value
     , sharePerson  :: !Person
     , shareEntered :: !Bool
     }
@@ -254,13 +265,13 @@ data IOU = IOU
     deriving stock (Show, Eq)
 
 iou :: Transaction -> [IOU]
-iou (ExpenseTransaction e) =
-    [ IOU (sharePerson s) (expensePaidBy e) (share (expenseTotal e) (shareType s))
-    | s <- splitShares (expenseSplit e)
-    , sharePerson s /= expensePaidBy e
+iou (ExpenseTransaction (Expense{..})) =
+    [ IOU sharePerson expensePaidBy (share expenseTotal shareValue)
+    | Share{..} <- splitShares expenseSplit
+    , sharePerson /= expensePaidBy
     ]
-iou (SettlementTransaction s) =
-    [IOU (settlementTo s) (settlementFrom s) (settlementAmount s)]
+iou (SettlementTransaction (Settlement{..})) =
+    [IOU settlementTo settlementFrom settlementAmount]
 
 settlements :: Time.TimeZone -> Time.UTCTime -> [Transaction] -> [Settlement]
 settlements tz utc ts =
@@ -272,10 +283,10 @@ settlements tz utc ts =
 formatDate :: Time.LocalTime -> Text
 formatDate = Text.pack . Time.formatTime Time.defaultTimeLocale "%F - %R"
 
-share :: Amount -> ShareType -> Amount
-share total = \case
-    Percentage pct -> total * Money.dense' (fromIntegral pct % 100)
-    Fixed a -> a
+share :: Amount -> Value -> Amount
+share total (Value st v) = case st of
+    Percentage -> total * Money.dense' v
+    Fixed      -> Money.dense' v
 
 iousToMap :: [IOU] -> DebtMap
 iousToMap = List.foldl' accumDebts Map.empty
@@ -296,8 +307,7 @@ iousToMap = List.foldl' accumDebts Map.empty
 
 mkSplit :: Amount -> [Share] -> Either Text Split
 mkSplit total shares
-    | undefined = Left "Shares may not be negative"
-    | undefined =
+    | toRational total == foldl' (+) 0 (value . shareValue <$> shares) =
         Left "Sum of shares does not equal total"
     | length (List.nub shares) /= length shares =
         Left "A person may not be listed more than once in the split"
@@ -356,3 +366,9 @@ findExpense i = List.find isExpense >=> getExpense
     getExpense :: Transaction -> Maybe Expense
     getExpense (ExpenseTransaction e) = Just e
     getExpense _                      = Nothing
+
+showAmount :: Amount -> Text
+showAmount = Money.denseToDecimal Money.defaultDecimalConf Money.Round
+
+showShare :: Share -> Text
+showShare = showAmount . Money.dense' . value . shareValue

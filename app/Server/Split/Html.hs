@@ -7,7 +7,6 @@ module Server.Split.Html (
 )
 where
 
-import           Data.Coerce       (coerce)
 import qualified Data.List         as List
 import           Data.Text         (Text)
 import qualified Data.Text         as Text
@@ -16,7 +15,7 @@ import           Inter.Lexicon     (l, l_)
 import qualified Inter.Lexicon     as Lexicon
 import           Lucid
 import qualified Lucid.Base
-import           Numeric           (showFFloat)
+import           Numeric           (fromRat, showFFloat)
 import           Safe              (headMay)
 import           Server.Utils.Html (baseTemplate, text)
 import           Split
@@ -90,8 +89,8 @@ instance ToHtml SplitPage where
                         div_ [class_ "debtor-form-group"] $ do
                             input_
                                 [ type_ "number"
-                                , id_ "amount"
-                                , name_ "amount"
+                                , id_ "value"
+                                , name_ "value"
                                 , value_ "50"
                                 ]
                             select_ [name_ "share-type"] $ do
@@ -160,15 +159,7 @@ iou_ lang (p, ious') = do
 
 debtItem_ :: (Monad m) => Language -> (Person, Amount) -> HtmlT m ()
 debtItem_ lang (p, amount) =
-    toHtml $
-        personName p
-            <> ": "
-            <> Text.pack
-                ( showFFloat
-                    (Just 2)
-                    (unAmount amount)
-                    (" " <> Text.unpack (l lang Lexicon.Currency))
-                )
+    toHtml $ personName p <> ": " <> showAmount amount <> " " <> l lang Lexicon.Currency
 
 data EditExpensePage
     = EditExpensePage
@@ -228,19 +219,19 @@ instance ToHtml EditExpensePage where
                     div_ [class_ "debtor-form-group"] $ do
                         input_
                             [ type_ "number"
-                            , id_ "amount"
-                            , name_ "amount"
-                            , value_ (text $ unAmount $ shareAmount debtorShare)
+                            , id_ "value"
+                            , name_ "value"
+                            , value_ (showShare debtorShare)
                             ]
                         select_
                             [ name_ "share-type"
-                            , value_ (text (shareType debtorShare))
+                            , value_ (showShare debtorShare)
                             ]
                             $ mapM_
                                 ( \st ->
                                     option_
                                         ( [value_ (shareTypeToText st)]
-                                            <> ([selected_ "selected" | st == shareType debtorShare])
+                                            <> ([selected_ "selected" | st == valueType (shareValue debtorShare)])
                                         )
                                         (toHtml (shareTypeSymbol lang st))
                                 )
@@ -252,7 +243,7 @@ instance ToHtml EditExpensePage where
                             , id_ "total"
                             , name_ "total"
                             , min_ "0"
-                            , value_ (text $ unAmount $ expenseTotal e)
+                            , value_ (showAmount $ expenseTotal e)
                             ]
                         span_ $ l_ lang Lexicon.Currency
                         span_ "*"
@@ -308,7 +299,7 @@ instance ToHtml TransactionHtml where
             div_ [class_ "expense-data-container no-shrink"] $ do
                 span_ $
                     toHtml $
-                        text (unAmount (expenseTotal e))
+                        showAmount (expenseTotal e)
                             <> " "
                             <> l lang Lexicon.Currency
                 split_ e
@@ -339,7 +330,7 @@ instance ToHtml TransactionHtml where
             div_ [class_ "expense-data-container"] $ do
                 span_ $
                     toHtml $
-                        text (unAmount (settlementAmount s))
+                        showAmount (settlementAmount s)
                             <> " "
                             <> l lang Lexicon.Currency
                 i_ [class_ "settle-icons"] "💸"
@@ -368,32 +359,33 @@ pieChart_ e size =
         ""
   where
     size' = Text.pack (show size)
-    colorShare :: Text -> Float -> Text
-    colorShare col sh = col <> " " <> text sh <> "%"
+    colorShare :: Text -> Rational -> Text
+    colorShare col rat = col <> " " <> Text.pack (showFFloat (Just 2) (fromRat (100 * rat) :: Float) "%")
+
     colorShares :: Amount -> [Share] -> Text
     colorShares total =
         Text.intercalate ", "
             . snd
             . List.foldl' (genColorText total) (0, [])
 
-    genColorText :: Amount -> (Float, [Text]) -> Share -> (Float, [Text])
-    genColorText _ (sum', txt) (Share Percentage p sh _) =
-        ( sum' + unAmount sh
+    genColorText :: Amount -> (Rational, [Text]) -> Share -> (Rational, [Text])
+    genColorText _ (sum', txt) (Share (Value Percentage pct) p _) =
+        ( sum' + pct
         , txt
             <> [ colorShare (personColor p) sum'
-               , colorShare (personColor p) (sum' + unAmount sh)
+               , colorShare (personColor p) (sum' + pct)
                ]
         )
-    genColorText total (sum', txt) (Share Fixed p sh _) =
-        ( sum' + toPercent sh
+    genColorText total (sum', txt) (Share val p _) =
+        ( sum' + toPercent val
         , txt
             <> [ colorShare (personColor p) sum'
-               , colorShare (personColor p) (sum' + toPercent sh)
+               , colorShare (personColor p) (sum' + toPercent val)
                ]
         )
       where
-        toPercent :: Amount -> Float
-        toPercent = (* 100) . coerce . (/ total)
+        toPercent :: Value -> Rational
+        toPercent = (/ toRational total) . value
 
 hxSwap_ :: Text -> Attribute
 hxSwap_ = Lucid.Base.makeAttribute "hx-swap"

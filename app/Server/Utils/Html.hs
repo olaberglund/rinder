@@ -2,9 +2,7 @@ module Server.Utils.Html (baseTemplate, text, baseTemplate', navbar_, Page404 (.
 
 import           Data.Text      (Text)
 import qualified Data.Text      as Text
-import           Inter.Language (Language, flag, mkHref, toHref)
-import           Inter.Lexicon  (l_)
-import qualified Inter.Lexicon  as Lexicon
+import           Inter.Language (Language, flag, toHref)
 import           Lucid
 
 default (Text)
