@@ -45,7 +45,7 @@ import           Data.UUID          (UUID)
 import           GHC.Generics       (Generic)
 import qualified Money
 import           Money.Aeson        ()
-import           Numeric            (showFFloat)
+import           Numeric            (fromRat, showFFloat)
 import qualified Safe
 import           Web.FormUrlEncoded (FromForm (fromForm), parseUnique)
 
@@ -377,7 +377,9 @@ showAmount :: Amount -> Text
 showAmount = Money.denseToDecimal Money.defaultDecimalConf Money.Round
 
 showShare :: Share -> Text
-showShare = showAmount . Money.dense' . value . shareValue
+showShare sh = case shareValue sh of
+    Value Percentage v -> Text.pack $ showFFloat (Just 2) (fromRat (100 * v) :: Float) ""
+    Value Fixed v -> showAmount $ Money.dense' v
 
 toNewExpense :: Aeson.Object -> Aeson.Types.Parser Expense
 toNewExpense o = do
