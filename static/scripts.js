@@ -82,9 +82,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const loadSettings = () => {
     const savedValue = localStorage.getItem(storageKey);
-    inputs.forEach((el) => {
-      el.checked = el.value === savedValue;
-    });
+    if(savedValue){
+      inputs.forEach((el) => {
+        el.checked = el.value === savedValue;
+      });
+    }
   };
 
   inputs.forEach((el) => {
