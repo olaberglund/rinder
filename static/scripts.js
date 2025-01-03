@@ -75,6 +75,27 @@ function stripLanguage(href) {
   return href.slice(href.indexOf("/", 1));
 }
 
+// whenever the html document has been parsed, i.e. on page load
+document.addEventListener("DOMContentLoaded", () => {
+  const inputs = document.querySelectorAll("input[name='paidBy']");
+  const storageKey = "paidBy";
+
+  const loadSettings = () => {
+    const savedValue = localStorage.getItem(storageKey);
+    inputs.forEach((el) => {
+      el.checked = el.value === savedValue;
+    });
+  };
+
+  inputs.forEach((el) => {
+    el.addEventListener("change", (e) => {
+      localStorage.setItem(storageKey, e.target.value);
+    });
+  });
+
+  loadSettings();
+});
+
 // inject the current href into hrefs of all a tags with class "language-link"
 document.querySelectorAll(".language-link").forEach((el) => {
   el.href
