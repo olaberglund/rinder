@@ -47,7 +47,7 @@ server env =
                         , saRemoveAllEP = removeAllH env lang grocery
                         , saModifyItemNoteEP = noteProductH env lang grocery
                         , saReorderItemEP = reorderItemH env lang grocery
-                        , saSseEP = sseH env
+                        -- , saSseEP = sseH env
                         }
                 , splitEP =
                     SplitApi

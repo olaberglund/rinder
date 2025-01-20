@@ -1,5 +1,4 @@
 module Server.Shopping.Handler (
-    sseH,
     removeAllH,
     removeCheckedH,
     toggleProductH,
@@ -38,7 +37,6 @@ import           Network.Wai.EventSource  (ServerEvent (..))
 import           Servant                  (Handler, NoContent (..),
                                            ServerError (..), err404, err500,
                                            throwError)
-import           Servant.API.EventStream  (EventSource)
 import qualified Servant.Types.SourceT    as S
 import           Server.Env               (Env (envShoppingListFile),
                                            envKeepAliveChan)
@@ -63,20 +61,20 @@ getShoppingList env = do
         Right sl -> Right sl
         Left err -> Left err
 
-sseH :: Env -> Handler EventSource
-sseH env = liftIO $ do
-    chan <- dupChan $ envKeepAliveChan env
-    return $ S.fromStepT (S.Yield keepAlive (rest chan))
-  where
-    rest :: Chan ServerEvent -> S.StepT IO ServerEvent
-    rest chan = S.Effect $ do
-        msg <- System.Timeout.timeout (15 * 1_000_000) (readChan chan)
-        return $ case msg of
-            Just m  -> S.Yield m (rest chan)
-            Nothing -> S.Yield keepAlive (rest chan)
-
-    keepAlive :: ServerEvent
-    keepAlive = CommentEvent (Builder.fromByteString "keep-alive")
+-- sseH :: Env -> Handler EventSource
+-- sseH env = liftIO $ do
+--     chan <- dupChan $ envKeepAliveChan env
+--     return $ S.fromStepT (S.Yield keepAlive (rest chan))
+--   where
+--     rest :: Chan ServerEvent -> S.StepT IO ServerEvent
+--     rest chan = S.Effect $ do
+--         msg <- System.Timeout.timeout (15 * 1_000_000) (readChan chan)
+--         return $ case msg of
+--             Just m  -> S.Yield m (rest chan)
+--             Nothing -> S.Yield keepAlive (rest chan)
+--
+--     keepAlive :: ServerEvent
+--     keepAlive = CommentEvent (Builder.fromByteString "keep-alive")
 
 toggle :: Checkbox -> Checkbox
 toggle Checked   = Unchecked

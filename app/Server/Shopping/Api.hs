@@ -6,7 +6,7 @@ import           Servant                 (Delete, FormUrlEncoded,
                                           NoContent (..), NoFraming, Post,
                                           ReqBody, StreamGet, type (:>))
 import           Servant.API             (Patch)
-import           Servant.API.EventStream (EventSource, EventStream)
+import           Servant.API.EventStream (EventStream)
 import           Servant.HTML.Lucid      (HTML)
 import           Server.Shopping.Html    (Note, ProductSearchList, Reordering,
                                           Search, ShoppingPage)
@@ -16,10 +16,11 @@ data ShoppingApi as = ShoppingApi
     { saPageEP :: !(as :- Get '[HTML] ShoppingPage)
     , saRemoveCheckedEP :: !(as :- "ta-bort" :> Delete '[HTML] NoContent)
     , saRemoveAllEP :: !(as :- "ta-bort-alla" :> Delete '[HTML] NoContent)
-    , saSseEP :: !(as :- "sse" :> StreamGet NoFraming EventStream EventSource)
     -- ^ Server-sent events endpoint for the shopping list. A client connects
     --     and receives an event each time a user modifies the shopping list.
-    , saItemListEP ::
+    , -- , saSseEP :: !(as :- "sse" :> ServerSentEvents (SourceIO XXX))
+
+      saItemListEP ::
         !( as
             :- "produkter"
                 :> ReqBody '[FormUrlEncoded] Search
